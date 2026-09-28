@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Owl Volume Tracker</title>
+  <meta name="description" content="FAU-themed market volume tracker: hourly, daily, weekly and monthly volume with 200-week moving average buy signals." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%23003366'/><circle cx='22' cy='28' r='9' fill='white'/><circle cx='42' cy='28' r='9' fill='white'/><circle cx='22' cy='28' r='4' fill='%23CC0000'/><circle cx='42' cy='28' r='4' fill='%23CC0000'/><path d='M28 38 L32 46 L36 38 Z' fill='%23CCCCCC'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="vendor/chart.umd.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <svg class="owl" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="30" fill="#fff"/>
+          <path d="M14 14 L22 22 M50 14 L42 22" stroke="#003366" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="22" cy="30" r="10" fill="#003366"/><circle cx="42" cy="30" r="10" fill="#003366"/>
+          <circle cx="22" cy="30" r="4.5" fill="#CC0000"/><circle cx="42" cy="30" r="4.5" fill="#CC0000"/>
+          <path d="M28 40 L32 49 L36 40 Z" fill="#CC0000"/>
+        </svg>
+        <div>
+          <div class="brand-title">OWL VOLUME TRACKER</div>
+          <div class="brand-sub">Florida Atlantic University · Owls Market Lab</div>
+        </div>
+      </div>
+      <form id="search" class="search" autocomplete="off">
+        <input id="symbol" name="symbol" placeholder="Ticker (e.g. AAPL)" aria-label="Ticker symbol" maxlength="15" />
+        <button type="submit">Track</button>
+      </form>
+    </div>
+    <div class="stripe"></div>
+  </header>
+
+  <main class="wrap">
+    <div class="chips" id="chips"></div>
+
+    <div id="error" class="error" hidden></div>
+
+    <section class="hero card" id="hero">
+      <div class="hero-left">
+        <div class="ticker" id="h-symbol">—</div>
+        <div class="name" id="h-name">Loading…</div>
+        <div class="price-row">
+          <span class="price" id="h-price">—</span>
+          <span class="change" id="h-change"></span>
+        </div>
+        <div class="muted small" id="h-time"></div>
+      </div>
+      <div class="hero-right">
+        <div class="signal" id="h-signal" data-level="na">
+          <div class="signal-label" id="h-signal-label">—</div>
+          <div class="signal-dist" id="h-signal-dist"></div>
+        </div>
+        <p class="signal-detail" id="h-signal-detail"></p>
+        <div class="wma-facts">
+          <div><span class="muted">200 WMA</span><strong id="h-wma">—</strong></div>
+          <div><span class="muted">Buy zone ≤</span><strong id="h-zone">—</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <h2 class="section-title">Volume by timeframe</h2>
+    <section class="tiles" id="tiles">
+      <!-- filled by app.js -->
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h3>Volume history</h3>
+        <div class="tabs" role="tablist" id="tabs">
+          <button role="tab" data-tf="hour" aria-selected="false">Hour</button>
+          <button role="tab" data-tf="day" aria-selected="true">Day</button>
+          <button role="tab" data-tf="week" aria-selected="false">Week</button>
+          <button role="tab" data-tf="month" aria-selected="false">Month</button>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="volChart" aria-label="Volume bar chart"></canvas></div>
+      <p class="muted small legend-note"><span class="key key-blue"></span> Completed period <span class="key key-red"></span> Current period (in progress) <span class="key key-line"></span> Average</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h3>Price vs 200-week moving average</h3>
+        <span class="muted small">Weekly closes, last 5 years</span>
+      </div>
+      <div class="chart-box tall"><canvas id="wmaChart" aria-label="Price and 200 week moving average chart"></canvas></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h3>Owl Scanner: 200 WMA buy opportunities</h3>
+        <button class="ghost" id="rescan">Rescan</button>
+      </div>
+      <div class="table-scroll">
+        <table class="scanner">
+          <thead>
+            <tr><th>Ticker</th><th>Price</th><th>200 WMA</th><th>vs WMA</th><th>Day RVOL</th><th>Signal</th></tr>
+          </thead>
+          <tbody id="scanBody"></tbody>
+        </table>
+      </div>
+      <form id="addForm" class="add-row">
+        <input id="addSymbol" placeholder="Add ticker to watchlist" maxlength="15" aria-label="Add ticker" />
+        <button type="submit" class="ghost">Add</button>
+      </form>
+    </section>
+
+    <section class="card how">
+      <h3>How the signals work</h3>
+      <ul>
+        <li><strong>200 WMA</strong> is the average of the last 200 weekly closes (about 4 years). It shows the long-term trend.</li>
+        <li><span class="pill" data-level="strong">STRONG BUY</span>: price is at or below the 200 WMA.</li>
+        <li><span class="pill" data-level="buy">BUY ZONE</span>: price is 0–10% above the 200 WMA.</li>
+        <li><span class="pill" data-level="watch">WATCH</span>: price is 10–30% above. <span class="pill" data-level="extended">EXTENDED</span>: price is more than 30% above.</li>
+        <li><strong>RVOL</strong> (relative volume) is the last completed period's volume divided by its average. A reading of 1.5× or higher alongside a buy signal counts as volume confirmation.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <strong>Go Owls!</strong> Built for FAU students. Data comes from public Yahoo Finance charts and may be delayed.
+      This is an educational tool, not financial advice.
+    </div>
+  </footer>
+</body>
+</html>

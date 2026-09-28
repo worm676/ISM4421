@@ -1,0 +1,14 @@
+{
+  "name": "fau-owl-volume-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FAU-themed market volume tracker with 200-week moving average buy signals.",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
