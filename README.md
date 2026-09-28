@@ -9,6 +9,12 @@ FAU-themed market volume tracker with a beige theme. The page opens with the **S
 
 Data comes from Yahoo Finance's public chart API (no API key) through a Netlify Function. Educational use only, not financial advice.
 
+## AI City (`/ecosystem/`)
+
+A 3D map of Resilience Enterprise's AI ecosystem as a small city. Districts are departments (Sales, CRM, Automation, Delivery, Creative, Build), buildings are AI tools and systems, and named agents walk the streets between them doing tasks, with a live activity feed and output counters. Click a building to see what it runs on and what it hands work to; click an agent to see its task loop or follow it with the camera.
+
+Edit `public/ecosystem/data.js` to change districts, buildings, agents and their tasks. Three.js is vendored in `public/vendor/three/`.
+
 ## Structure
 
 ```
@@ -17,6 +23,7 @@ netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarize
 netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
 netlify/lib/top20.mjs          top 20 ticker list (edit when rankings shift)
 netlify/lib/metrics.mjs        volume, 200 WMA and signal math
+public/ecosystem/              AI City 3D page (data.js holds the city, city.js the layout, app.js the scene)
 tests/                         node:test unit tests (npm test)
 netlify.toml                   Netlify config (publish dir, functions dir)
 ```
