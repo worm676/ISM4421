@@ -71,3 +71,23 @@ test("handler rejects bad symbols", async () => {
   const res = await handler(new Request("https://x/api/market?symbol=<script>"));
   assert.equal(res.status, 400);
 });
+
+test("top handler returns 20 ranked stocks", async () => {
+  const { default: top } = await import("../netlify/functions/top.mjs");
+  const { TOP_20 } = await import("../netlify/lib/top20.mjs");
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const interval = new URL(url).searchParams.get("interval");
+    const n = interval === "1wk" ? 260 : 63;
+    return new Response(JSON.stringify({ chart: { result: [yahoo(n, (i) => 100 + i * 0.1, () => 1e6)] } }));
+  };
+  try {
+    const d = await (await top()).json();
+    assert.equal(TOP_20.length, 20);
+    assert.equal(d.stocks.length, 20);
+    assert.deepEqual(d.stocks.map((s) => s.rank), Array.from({ length: 20 }, (_, i) => i + 1));
+    assert.ok(d.stocks.every((s) => !s.error && s.wma200 > 0 && s.signal.level));
+  } finally {
+    globalThis.fetch = orig;
+  }
+});

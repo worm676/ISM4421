@@ -1,6 +1,6 @@
 # Owl Volume Tracker (FAU)
 
-FAU-themed market volume tracker. For any ticker it shows:
+FAU-themed market volume tracker with a beige theme. The page opens with the **S&P 500 Top 20**: the 20 largest companies by index weight, each with price, day change, volume and a 200 WMA signal. Click any card to drill in. For any ticker it shows:
 
 - **Volume by hour, day, week and month.** Each timeframe shows the last completed period, the current period so far, the average, and relative volume (RVOL).
 - **200-week moving average (200 WMA)** charted against weekly closes, with a +10% buy-zone band.
@@ -14,6 +14,8 @@ Data comes from Yahoo Finance's public chart API (no API key) through a Netlify 
 ```
 public/                        static site (index.html, styles.css, app.js, vendored Chart.js)
 netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarizes Yahoo data
+netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
+netlify/lib/top20.mjs          top 20 ticker list (edit when rankings shift)
 netlify/lib/metrics.mjs        volume, 200 WMA and signal math
 tests/                         node:test unit tests (npm test)
 netlify.toml                   Netlify config (publish dir, functions dir)
