@@ -39,8 +39,15 @@
   <main class="wrap">
     <section class="top20">
       <div class="card-head">
-        <h2 class="section-title">S&amp;P 500 Top 20</h2>
-        <span class="muted small" id="top-meta">Largest companies by index weight</span>
+        <div>
+          <h2 class="section-title" id="top-title">At or below the 200 WMA</h2>
+          <span class="muted small" id="top-meta">Screening the S&amp;P 500…</span>
+        </div>
+        <div class="tabs" role="tablist" id="viewTabs" aria-label="Choose which stocks to show">
+          <button role="tab" data-view="below" aria-selected="true">At/below WMA</button>
+          <button role="tab" data-view="top" aria-selected="false">S&amp;P Top 20</button>
+          <button role="tab" data-view="extended" aria-selected="false">Extended</button>
+        </div>
       </div>
       <div class="top-grid" id="topGrid"></div>
     </section>

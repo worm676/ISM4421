@@ -251,38 +251,87 @@ async function scan() {
   [...body.rows].sort((a, b) => a.dataset.dist - b.dataset.dist).forEach((r) => body.appendChild(r));
 }
 
-// ---------- S&P 500 top 20 ----------
-async function loadTop() {
+// ---------- top section: at/below WMA, S&P top 20, or extended ----------
+const VIEW_KEY = "owl-top-view";
+const VIEWS = {
+  below: { title: "At or below the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is at or below its 200-week moving average right now." },
+  top: { title: "S&P 500 Top 20", url: "/api/top" },
+  extended: { title: "Extended: more than 30% above the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is extended right now." },
+};
+const topData = {};
+let topView = "below";
+try { if (VIEWS[localStorage.getItem(VIEW_KEY)]) topView = localStorage.getItem(VIEW_KEY); } catch {}
+
+function topCard(s, rank, sub) {
+  if (s.error) {
+    return `<button class="top-card" data-s="${s.symbol}"><div class="top-row"><span class="rank">${rank}</span><span class="tk">${s.symbol}</span></div><div class="muted small">Unavailable</div></button>`;
+  }
+  const chg = s.changePct;
+  return `<button class="top-card" data-s="${s.symbol}" title="${s.name}">
+    <div class="top-row"><span class="rank">${rank}</span><span class="tk">${s.symbol}</span>
+      <span class="chg ${chg >= 0 ? "up" : "down"}">${fmtPct(chg)}</span></div>
+    <div class="nm">${s.name}</div>
+    <div class="top-row"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">${sub}</span></div>
+    <div class="top-row"><span class="pill" data-level="${s.signal.level}">${s.signal.label}</span>
+      <span class="muted small nowrap">${fmtPct(s.signal.distancePct)}<span class="wl"> WMA</span></span></div>
+  </button>`;
+}
+
+function renderTop() {
   const grid = $("topGrid");
-  if (!grid.children.length) {
+  const v = VIEWS[topView];
+  $("top-title").textContent = v.title;
+  for (const b of $("viewTabs").children) b.setAttribute("aria-selected", b.dataset.view === topView);
+  const data = topData[v.url];
+  if (!data) {
     grid.innerHTML = Array.from({ length: 20 }, () => `<div class="top-card skeleton"></div>`).join("");
+    $("top-meta").textContent = topView === "top" ? "Loading…" : "Screening all S&P 500 stocks…";
+    return;
   }
-  try {
-    const res = await fetch("/api/top");
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
-    grid.innerHTML = data.stocks
-      .map((s) => {
-        if (s.error) {
-          return `<button class="top-card" data-s="${s.symbol}"><div class="top-row"><span class="rank">${s.rank}</span><span class="tk">${s.symbol}</span></div><div class="muted small">Unavailable</div></button>`;
-        }
-        const chg = s.changePct;
-        return `<button class="top-card" data-s="${s.symbol}" title="${s.name}">
-          <div class="top-row"><span class="rank">${s.rank}</span><span class="tk">${s.symbol}</span>
-            <span class="chg ${chg >= 0 ? "up" : "down"}">${fmtPct(chg)}</span></div>
-          <div class="top-row"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">Vol ${fmtVol(s.dayVolume)}</span></div>
-          <div class="top-row"><span class="pill" data-level="${s.signal.level}">${s.signal.label}</span>
-            <span class="muted small nowrap">${fmtPct(s.signal.distancePct)}<span class="wl"> WMA</span></span></div>
-        </button>`;
-      })
-      .join("");
-    $("top-meta").textContent = `Ranked by index weight (${data.asOf}) · updated ${new Date(data.fetchedAt).toLocaleTimeString()}`;
-  } catch (err) {
-    grid.innerHTML = `<div class="muted">Could not load the top 20: ${err.message}</div>`;
+  if (data.error) {
+    grid.innerHTML = `<div class="muted top-empty">Could not load this list: ${data.error}</div>`;
+    $("top-meta").textContent = "";
+    return;
   }
+  const time = new Date(data.fetchedAt).toLocaleTimeString();
+  if (topView === "top") {
+    grid.innerHTML = data.stocks.map((s) => topCard(s, s.rank, `Vol ${fmtVol(s.dayVolume)}`)).join("");
+    $("top-meta").textContent = `Ranked by index weight (${data.asOf}) · updated ${time}`;
+    return;
+  }
+  const list = data[topView];
+  const total = data.counts[topView];
+  grid.innerHTML = list.length
+    ? list.map((s, i) => topCard(s, i + 1, `WMA ${fmtMoney(s.wma200)}`)).join("")
+    : `<div class="muted top-empty">${v.empty}</div>`;
+  const order = topView === "below" ? "deepest below first" : "most extended first";
+  $("top-meta").textContent = `${total > list.length ? `Showing ${list.length} of ${total}` : `${total} found`} out of ${data.counts.screened} S&P 500 stocks · ${order} · updated ${time}`;
+}
+
+async function loadTop(force = false) {
+  const url = VIEWS[topView].url;
+  if (!topData[url] || force) {
+    if (!topData[url]) renderTop();
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      topData[url] = data;
+    } catch (err) {
+      if (!topData[url] || topData[url].error) topData[url] = { error: err.message };
+    }
+  }
+  if (VIEWS[topView].url === url) renderTop();
 }
 
 // ---------- events ----------
+$("viewTabs").addEventListener("click", (e) => {
+  const v = e.target.closest("[data-view]")?.dataset.view;
+  if (!v || v === topView) return;
+  topView = v;
+  try { localStorage.setItem(VIEW_KEY, v); } catch {}
+  loadTop();
+});
 $("topGrid").addEventListener("click", (e) => {
   const s = e.target.closest("[data-s]")?.dataset.s;
   if (s) load(s).then(() => $("hero").scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -339,7 +388,7 @@ loadTop();
 load(initial).then(scan);
 setInterval(() => {
   if (document.hidden) return;
-  loadTop();
+  loadTop(true);
   if (state.data) {
     cache.delete(state.data.symbol);
     load(state.data.symbol);
