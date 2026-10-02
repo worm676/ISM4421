@@ -51,6 +51,32 @@ export function wma200(weeklyBars, period = 200) {
   return { value, weeksAvailable: closes.length, line };
 }
 
+// One screener row from a Yahoo spark entry (weekly closes, no volume).
+export function screenRow(symbol, name, entry) {
+  const closes = (entry?.close ?? []).filter((c) => c != null);
+  const price = entry?.fulldayPrice ?? closes.at(-1) ?? null;
+  const wma = wma200(closes.map((close, i) => ({ t: i, close, volume: 0 }))).value;
+  return {
+    symbol, name, price,
+    changePct: entry?.fulldayChangePercent ?? null,
+    wma200: wma,
+    signal: buySignal(price, wma, null),
+  };
+}
+
+// Split screener rows into the two lists the home page shows, capped at `limit`.
+// At/below: deepest discount to the 200 WMA first. Extended: furthest above first.
+export function screenLists(rows, limit = 20) {
+  const ok = rows.filter((r) => r.signal?.distancePct != null);
+  const below = ok.filter((r) => r.signal.distancePct <= 0).sort((a, b) => a.signal.distancePct - b.signal.distancePct);
+  const extended = ok.filter((r) => r.signal.level === "extended").sort((a, b) => b.signal.distancePct - a.signal.distancePct);
+  return {
+    below: below.slice(0, limit),
+    extended: extended.slice(0, limit),
+    counts: { below: below.length, extended: extended.length, screened: ok.length },
+  };
+}
+
 // Buy signal from price distance to the 200 WMA, confirmed by daily volume.
 export function buySignal(price, wma, dailyRvol) {
   if (wma == null || price == null) {

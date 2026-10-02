@@ -19,7 +19,24 @@ export async function chart(symbol, interval, range) {
   throw lastErr;
 }
 
-export const json = (status, data, cache = "no-store") =>
+// Batch weekly closes for up to 20 symbols in one call. Returns { SYMBOL: { close: [...], fulldayPrice, fulldayChangePercent } }.
+export async function spark(symbols, range = "5y", interval = "1wk") {
+  let lastErr;
+  for (const host of HOSTS) {
+    const url = `${host}/v8/finance/spark?symbols=${symbols.map(encodeURIComponent).join(",")}&range=${range}&interval=${interval}`;
+    try {
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (FAU Owl Volume Tracker)" } });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body && typeof body === "object" && !body.spark?.error) return body;
+      lastErr = new Error(body?.spark?.error?.description || `Yahoo returned HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+export const json =(status, data, cache = "no-store") =>
   new Response(JSON.stringify(data), {
     status,
     headers: {

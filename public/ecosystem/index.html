@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resilience AI City</title>
+  <meta name="description" content="Resilience Enterprise's AI ecosystem as a 3D city: departments are districts, AI tools are buildings, and agents walk the streets doing the work." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='8' y='24' width='12' height='32' fill='%234c8dff'/><rect x='26' y='8' width='12' height='48' fill='%237fe9ff'/><rect x='44' y='18' width='12' height='38' fill='%23f2b632'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="ecosystem.css" />
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three/three.module.min.js", "three/addons/": "../vendor/three/" } }
+  </script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <canvas id="city" aria-label="3D city of AI agents. Use the lists on screen to explore it without a pointer."></canvas>
+
+  <header class="hud top">
+    <div class="title">
+      <div class="eyebrow">Resilience Enterprise</div>
+      <h1>AI City</h1>
+      <p>Every district is a department, every building an AI system, and every walker an agent doing real work. Drag to orbit, scroll to zoom, click anything.</p>
+    </div>
+    <button id="time" class="chip" type="button">Switch to day</button>
+  </header>
+
+  <aside class="hud left">
+    <section>
+      <h3>Districts</h3>
+      <div id="legend" class="chips"></div>
+    </section>
+    <section>
+      <h3>Agents</h3>
+      <div id="agents" class="chips"></div>
+    </section>
+    <section class="stats-wrap">
+      <h3>Output this session</h3>
+      <div id="counters" class="stats"></div>
+    </section>
+  </aside>
+
+  <aside class="hud right">
+    <h3>Live activity</h3>
+    <ul id="feed" class="feed"></ul>
+  </aside>
+
+  <section id="panel" class="panel" hidden aria-live="polite"></section>
+
+  <noscript><p class="nojs">This page needs JavaScript and WebGL.</p></noscript>
+</body>
+</html>
