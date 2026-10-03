@@ -4,7 +4,7 @@ FAU-themed market volume tracker with a beige theme. The page opens with up to 2
 
 - **Volume by hour, day, week and month.** Each timeframe shows the last completed period, the current period so far, the average, and relative volume (RVOL).
 - **200-week moving average (200 WMA)** charted against weekly closes, with a +10% buy-zone band.
-- **Buy signals.** STRONG BUY when price is at or below the 200 WMA; BUY ZONE when it is up to 10% above. A day RVOL of 1.5× or more counts as volume confirmation.
+- **Buy signals.** DOWN PRESSURE when price is more than 30% below the 200 WMA; WEAK BUY when it is 10–30% below; STRONG BUY when it is at the 200 WMA or up to 10% below; BUY ZONE when it is up to 10% above. A day RVOL of 1.5× or more counts as volume confirmation.
 - **Owl Scanner.** A watchlist ranked by distance to the 200 WMA, so the best opportunities sit at the top. The watchlist is saved in the browser.
 
 Data comes from Yahoo Finance's public chart API (no API key) through a Netlify Function. Educational use only, not financial advice.

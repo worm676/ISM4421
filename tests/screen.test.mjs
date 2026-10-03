@@ -12,7 +12,7 @@ test("screenRow computes distance to the 200 WMA from weekly closes", () => {
   assert.equal(r.price, 80);
   assert.equal(r.changePct, 1.2);
   assert.equal(r.wma200, (199 * 100 + 80) / 200);
-  assert.equal(r.signal.level, "strong");
+  assert.equal(r.signal.level, "weak");
   assert.equal(screenRow("X", "X", { close: [1, 2] }).signal.level, "na");
 });
 

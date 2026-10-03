@@ -39,6 +39,12 @@ test("wma200 is null with under 200 weeks", () => {
 
 test("buySignal levels", () => {
   assert.equal(buySignal(95, 100, 1).level, "strong");
+  assert.equal(buySignal(100, 100, 1).level, "strong");
+  assert.equal(buySignal(90, 100, 1).level, "strong");
+  assert.equal(buySignal(89, 100, 1).level, "weak");
+  assert.equal(buySignal(70, 100, 1).level, "weak");
+  assert.equal(buySignal(69, 100, 1).level, "pressure");
+  assert.equal(buySignal(69, 100, 1).label, "DOWN PRESSURE");
   assert.equal(buySignal(105, 100, 1).level, "buy");
   assert.equal(buySignal(120, 100, 1).level, "watch");
   assert.equal(buySignal(140, 100, 1).level, "extended");
@@ -61,7 +67,7 @@ test("handler returns full payload from mocked Yahoo", async () => {
     for (const tf of ["hour", "day", "week", "month"]) assert.ok(d.volume[tf].average > 0, tf);
     assert.ok(d.wma200.value > 0);
     assert.equal(d.wma200.line.length, 260);
-    assert.ok(["strong", "buy", "watch", "extended"].includes(d.signal.level));
+    assert.ok(["pressure", "weak", "strong", "buy", "watch", "extended"].includes(d.signal.level));
   } finally {
     globalThis.fetch = orig;
   }

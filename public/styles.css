@@ -110,6 +110,8 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .up { color: var(--green); } .down { color: var(--fau-red); }
 
 .signal { border-radius: 12px; padding: 14px 16px; color: #fff; background: #6b7785; }
+.signal[data-level="pressure"] { background: linear-gradient(135deg, #4a2a6e, #6b3d99); }
+.signal[data-level="weak"] { background: linear-gradient(135deg, #3f6b23, #55882f); }
 .signal[data-level="strong"] { background: linear-gradient(135deg, #0a7d3b, #0d9b4a); }
 .signal[data-level="buy"] { background: linear-gradient(135deg, var(--fau-blue), var(--fau-blue-2)); }
 .signal[data-level="watch"] { background: linear-gradient(135deg, #8a5a00, #b26a00); }
@@ -157,6 +159,8 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .add-row { display: flex; gap: 8px; margin-top: 12px; max-width: 360px; }
 
 .pill { display: inline-block; font: 700 11px Inter, sans-serif; letter-spacing: .6px; padding: 3px 8px; border-radius: 6px; color: #fff; background: #6b7785; }
+.pill[data-level="pressure"] { background: #6b3d99; }
+.pill[data-level="weak"] { background: #55882f; }
 .pill[data-level="strong"] { background: #0a7d3b; }
 .pill[data-level="buy"] { background: var(--fau-blue); }
 .pill[data-level="watch"] { background: #b26a00; }
