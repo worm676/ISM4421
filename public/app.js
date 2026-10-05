@@ -255,6 +255,7 @@ async function scan() {
 const VIEW_KEY = "owl-top-view";
 const VIEWS = {
   below: { title: "At or below the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is at or below its 200-week moving average right now." },
+  sweetspot: { title: "Sweetspot: at the 200 WMA to 7% below", url: "/api/screen", empty: "No S&P 500 stock is in the sweetspot right now." },
   top: { title: "S&P 500 Top 20", url: "/api/top" },
   extended: { title: "Extended: more than 30% above the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is extended right now." },
 };
@@ -271,6 +272,7 @@ function topCard(s, rank, sub) {
     <div class="top-row"><span class="rank">${rank}</span><span class="tk">${s.symbol}</span>
       <span class="chg ${chg >= 0 ? "up" : "down"}">${fmtPct(chg)}</span></div>
     <div class="nm">${s.name}</div>
+    ${s.turningUp && topView === "sweetspot" ? `<div class="bounce">↑ Turning up this week</div>` : ""}
     <div class="top-row"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">${sub}</span></div>
     <div class="top-row"><span class="pill" data-level="${s.signal.level}">${s.signal.label}</span>
       <span class="muted small nowrap">${fmtPct(s.signal.distancePct)}<span class="wl"> WMA</span></span></div>
@@ -304,7 +306,7 @@ function renderTop() {
   grid.innerHTML = list.length
     ? list.map((s, i) => topCard(s, i + 1, `WMA ${fmtMoney(s.wma200)}`)).join("")
     : `<div class="muted top-empty">${v.empty}</div>`;
-  const order = topView === "below" ? "deepest below first" : "most extended first";
+  const order = { below: "deepest below first", sweetspot: "turning up first, then closest to the WMA", extended: "most extended first" }[topView];
   $("top-meta").textContent = `${total > list.length ? `Showing ${list.length} of ${total}` : `${total} found`} out of ${data.counts.screened} S&P 500 stocks · ${order} · updated ${time}`;
 }
 

@@ -26,7 +26,7 @@ test("screenLists caps at 20 and sorts each list", () => {
   const l = screenLists(rows, 20);
   assert.equal(l.below.length, 20);
   assert.equal(l.extended.length, 20);
-  assert.deepEqual(l.counts, { below: 25, extended: 22, screened: 48 });
+  assert.deepEqual(l.counts, { below: 25, sweetspot: 7, extended: 22, screened: 48 });
   assert.equal(l.below[0].symbol, "B24"); // deepest below first
   assert.equal(l.extended[0].symbol, "E21"); // most extended first
   assert.ok(l.below.every((r) => r.signal.distancePct <= 0));
@@ -63,4 +63,30 @@ test("screen handler returns 502 when the data source is down", async () => {
   } finally {
     globalThis.fetch = orig;
   }
+});
+
+test("screenLists builds the sweetspot list: turning up first, then closest to the WMA", () => {
+  const rows = [
+    screenRow("A", "a", entry(99.4)), // ~-0.5%
+    screenRow("B", "b", entry(95)), // ~-4.9%
+    screenRow("C", "c", entry(100.9)), // ~+1.0%, at the WMA
+    screenRow("D", "d", entry(92)), // ~-7.9%, too far below
+    screenRow("E", "e", entry(102)), // ~+2.1%, too far above
+  ];
+  rows[1].turningUp = true;
+  const l = screenLists(rows, 20);
+  assert.deepEqual(l.sweetspot.map((r) => r.symbol), ["B", "A", "C"]);
+  assert.equal(l.counts.sweetspot, 3);
+});
+
+test("screenRow flags turningUp against last week's close, ignoring a repeated current bar", () => {
+  const day = 86400, t0 = 1_700_000_000;
+  const mk = (closes) => ({
+    close: closes,
+    timestamp: closes.map((_, i) => (i === closes.length - 1 ? t0 + (i - 1) * 7 * day + 2 * day : t0 + i * 7 * day)),
+    fulldayPrice: closes.at(-1),
+  });
+  // Last two bars are the same in-progress week; last week's close is 100.
+  assert.equal(screenRow("U", "u", mk([...Array(198).fill(100), 100, 103, 103])).turningUp, true);
+  assert.equal(screenRow("D", "d", mk([...Array(198).fill(100), 100, 97, 97])).turningUp, false);
 });
