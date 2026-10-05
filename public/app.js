@@ -51,6 +51,8 @@ function getWatchlist() {
 }
 function setWatchlist(list) {
   try { localStorage.setItem(WATCH_KEY, JSON.stringify(list)); } catch {}
+  // auth.js listens for this to save the watchlist to a signed-in user's profile.
+  document.dispatchEvent(new CustomEvent("owl:watchlist", { detail: list }));
 }
 
 // ---------- render: main symbol ----------
@@ -327,13 +329,27 @@ async function loadTop(force = false) {
 }
 
 // ---------- events ----------
-$("viewTabs").addEventListener("click", (e) => {
-  const v = e.target.closest("[data-view]")?.dataset.view;
-  if (!v || v === topView) return;
+function setTopView(v) {
+  if (!VIEWS[v] || v === topView) return;
   topView = v;
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   loadTop();
-});
+}
+$("viewTabs").addEventListener("click", (e) => setTopView(e.target.closest("[data-view]")?.dataset.view));
+
+// Hooks for auth.js to apply a signed-in user's saved profile.
+window.owl = {
+  getWatchlist,
+  getView: () => topView,
+  applyProfile({ watchlist, view }) {
+    if (Array.isArray(watchlist) && watchlist.length) {
+      try { localStorage.setItem(WATCH_KEY, JSON.stringify(watchlist)); } catch {}
+      renderChips();
+      scan();
+    }
+    setTopView(view);
+  },
+};
 $("topGrid").addEventListener("click", (e) => {
   const s = e.target.closest("[data-s]")?.dataset.s;
   if (s) load(s).then(() => $("hero").scrollIntoView({ behavior: "smooth", block: "start" }));

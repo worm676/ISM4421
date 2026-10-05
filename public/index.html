@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="vendor/chart.umd.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="vendor/supabase/supabase.js" defer></script>
+  <script src="auth.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -32,6 +34,7 @@
         <input id="symbol" name="symbol" placeholder="Ticker (e.g. AAPL)" aria-label="Ticker symbol" maxlength="15" />
         <button type="submit">Track</button>
       </form>
+      <button type="button" class="account-btn" id="accountBtn">Log in</button>
     </div>
     <div class="stripe"></div>
   </header>
@@ -140,6 +143,61 @@
       </ul>
     </section>
   </main>
+
+  <dialog id="accountDialog" class="account" aria-labelledby="accountTitle">
+    <button type="button" class="close" id="accountClose" aria-label="Close">×</button>
+
+    <div id="authView">
+      <h2 id="accountTitle">Welcome, Owl</h2>
+      <p class="muted small">Log in to save your watchlist and favorite view across devices.</p>
+      <div class="tabs auth-tabs" role="tablist">
+        <button type="button" role="tab" data-mode="login" aria-selected="true">Log in</button>
+        <button type="button" role="tab" data-mode="signup" aria-selected="false">Create account</button>
+      </div>
+      <form id="authForm" class="account-form">
+        <label class="signup-only" hidden>Display name
+          <input name="name" maxlength="40" autocomplete="nickname" />
+        </label>
+        <label>Email
+          <input name="email" type="email" required autocomplete="email" />
+        </label>
+        <label>Password
+          <input name="password" type="password" required minlength="6" autocomplete="current-password" />
+        </label>
+        <button type="submit" id="authSubmit">Log in</button>
+        <button type="button" class="link" id="forgotBtn">Forgot password?</button>
+      </form>
+    </div>
+
+    <div id="profileView" hidden>
+      <h2>Your profile</h2>
+      <p class="muted small" id="profileEmail"></p>
+      <form id="profileForm" class="account-form">
+        <label>Display name
+          <input name="name" maxlength="40" autocomplete="nickname" />
+        </label>
+        <label>Open the site on
+          <select name="view">
+            <option value="below">At/below WMA</option>
+            <option value="sweetspot">Sweetspot</option>
+            <option value="top">S&amp;P Top 20</option>
+            <option value="extended">Extended</option>
+          </select>
+        </label>
+        <label>New password <span class="muted small">(leave blank to keep yours)</span>
+          <input name="password" type="password" minlength="6" autocomplete="new-password" />
+        </label>
+        <div class="saved-list">
+          <span class="muted small">Saved watchlist</span>
+          <div id="profileWatchlist" class="small"></div>
+        </div>
+        <button type="submit">Save profile</button>
+        <button type="button" class="ghost" id="logoutBtn">Log out</button>
+      </form>
+    </div>
+
+    <p class="account-msg small" id="accountMsg" role="status"></p>
+  </dialog>
 
   <footer class="footer">
     <div class="wrap">

@@ -9,6 +9,12 @@ FAU-themed market volume tracker with a beige theme. The page opens with up to 2
 
 Data comes from Yahoo Finance's public chart API (no API key) through a Netlify Function. Educational use only, not financial advice.
 
+## Accounts (log in and profile)
+
+The **Log in** button in the header opens a sign-up / log-in form (email and password). A profile stores a display name, the view the site opens on, and the Owl Scanner watchlist, so they follow the user to any device. Auth and storage use Supabase (project `tufyhrugtpfhaxvgpliw`, table `public.profiles`, row level security so each user can only read and change their own row). The publishable key in `public/auth.js` is safe to ship to browsers.
+
+**One-time setup in Supabase:** Authentication → URL Configuration → set **Site URL** to the Netlify site URL and add it under **Redirect URLs**, so confirmation and password-reset emails link back to the site instead of localhost.
+
 ## AI City (`/ecosystem/`)
 
 A 3D map of Resilience Enterprise's AI ecosystem as a small city. Districts are departments (Sales, CRM, Automation, Delivery, Creative, Build), buildings are AI tools and systems, and named agents walk the streets between them doing tasks, with a live activity feed and output counters. Click a building to see what it runs on and what it hands work to; click an agent to see its task loop or follow it with the camera.
@@ -18,7 +24,7 @@ Edit `public/ecosystem/data.js` to change districts, buildings, agents and their
 ## Structure
 
 ```
-public/                        static site (index.html, styles.css, app.js, vendored Chart.js)
+public/                        static site (index.html, styles.css, app.js, auth.js, vendored Chart.js and Supabase)
 netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarizes Yahoo data
 netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
 netlify/functions/screen.mjs   GET /api/screen, screens all S&P 500 stocks vs the 200 WMA (cached 15 min)
