@@ -56,24 +56,41 @@ export function screenRow(symbol, name, entry) {
   const closes = (entry?.close ?? []).filter((c) => c != null);
   const price = entry?.fulldayPrice ?? closes.at(-1) ?? null;
   const wma = wma200(closes.map((close, i) => ({ t: i, close, volume: 0 }))).value;
+  // Last week's close: the latest bar at least 4 days before the newest one
+  // (Yahoo can repeat the in-progress week as an extra bar).
+  const ts = entry?.timestamp ?? [];
+  const lastTs = ts.at(-1);
+  let prevWeekClose = null;
+  for (let i = ts.length - 1; i >= 0; i--) {
+    if (entry.close[i] != null && lastTs - ts[i] >= 4 * 86400) { prevWeekClose = entry.close[i]; break; }
+  }
   return {
     symbol, name, price,
     changePct: entry?.fulldayChangePercent ?? null,
     wma200: wma,
+    turningUp: price != null && prevWeekClose != null && price > prevWeekClose,
     signal: buySignal(price, wma, null),
   };
 }
 
-// Split screener rows into the two lists the home page shows, capped at `limit`.
+// Sweetspot: at the 200 WMA (within 1% above) down to 7% below it.
+export const SWEETSPOT = { min: -7, max: 1 };
+
+// Split screener rows into the lists the home page shows, capped at `limit`.
 // At/below: deepest discount to the 200 WMA first. Extended: furthest above first.
 export function screenLists(rows, limit = 20) {
   const ok = rows.filter((r) => r.signal?.distancePct != null);
   const below = ok.filter((r) => r.signal.distancePct <= 0).sort((a, b) => a.signal.distancePct - b.signal.distancePct);
   const extended = ok.filter((r) => r.signal.level === "extended").sort((a, b) => b.signal.distancePct - a.signal.distancePct);
+  // Sweetspot: stocks turning up this week first, then closest to the WMA.
+  const sweetspot = ok
+    .filter((r) => r.signal.distancePct >= SWEETSPOT.min && r.signal.distancePct <= SWEETSPOT.max)
+    .sort((a, b) => (b.turningUp === true) - (a.turningUp === true) || Math.abs(a.signal.distancePct) - Math.abs(b.signal.distancePct));
   return {
     below: below.slice(0, limit),
+    sweetspot: sweetspot.slice(0, limit),
     extended: extended.slice(0, limit),
-    counts: { below: below.length, extended: extended.length, screened: ok.length },
+    counts: { below: below.length, sweetspot: sweetspot.length, extended: extended.length, screened: ok.length },
   };
 }
 

@@ -1,6 +1,6 @@
 # Owl Volume Tracker (FAU)
 
-FAU-themed market volume tracker with a beige theme. The page opens with up to 20 stocks, and a toggle picks which list: **At/below WMA** (default: S&P 500 stocks at or below their 200-week moving average, deepest discount first), **S&P Top 20** (the 20 largest companies by index weight) or **Extended** (S&P 500 stocks more than 30% above their 200 WMA, most extended first). The choice is remembered in the browser. Click any card to drill in. For any ticker it shows:
+FAU-themed market volume tracker with a beige theme. The page opens with up to 20 stocks, and a toggle picks which list: **At/below WMA** (default: S&P 500 stocks at or below their 200-week moving average, deepest discount first), **Sweetspot** (stocks at the 200 WMA, up to 1% above, down to 7% below it; ones trading above last week's close are flagged "Turning up" and listed first), **S&P Top 20** (the 20 largest companies by index weight) or **Extended** (S&P 500 stocks more than 30% above their 200 WMA, most extended first). The choice is remembered in the browser. Click any card to drill in. For any ticker it shows:
 
 - **Volume by hour, day, week and month.** Each timeframe shows the last completed period, the current period so far, the average, and relative volume (RVOL).
 - **200-week moving average (200 WMA)** charted against weekly closes, with a +10% buy-zone band.
@@ -8,6 +8,12 @@ FAU-themed market volume tracker with a beige theme. The page opens with up to 2
 - **Owl Scanner.** A watchlist ranked by distance to the 200 WMA, so the best opportunities sit at the top. The watchlist is saved in the browser.
 
 Data comes from Yahoo Finance's public chart API (no API key) through a Netlify Function. Educational use only, not financial advice.
+
+## Accounts (log in and profile)
+
+The **Log in** button in the header opens a sign-up / log-in form (email and password). A profile stores a display name, the view the site opens on, and the Owl Scanner watchlist, so they follow the user to any device. Auth and storage use Supabase (project `tufyhrugtpfhaxvgpliw`, table `public.profiles`, row level security so each user can only read and change their own row). The publishable key in `public/auth.js` is safe to ship to browsers.
+
+**One-time setup in Supabase:** Authentication → URL Configuration → set **Site URL** to the Netlify site URL and add it under **Redirect URLs**, so confirmation and password-reset emails link back to the site instead of localhost.
 
 ## AI City (`/ecosystem/`)
 
@@ -18,7 +24,7 @@ Edit `public/ecosystem/data.js` to change districts, buildings, agents and their
 ## Structure
 
 ```
-public/                        static site (index.html, styles.css, app.js, vendored Chart.js)
+public/                        static site (index.html, styles.css, app.js, auth.js, vendored Chart.js and Supabase)
 netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarizes Yahoo data
 netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
 netlify/functions/screen.mjs   GET /api/screen, screens all S&P 500 stocks vs the 200 WMA (cached 15 min)
