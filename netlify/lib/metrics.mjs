@@ -85,10 +85,18 @@ export function buySignal(price, wma, dailyRvol) {
   const distancePct = ((price - wma) / wma) * 100;
   const volumeConfirmed = dailyRvol != null && dailyRvol >= 1.5;
   let level, label, detail;
-  if (distancePct <= 0) {
+  if (distancePct < -30) {
+    level = "pressure";
+    label = "DOWN PRESSURE";
+    detail = "Price is more than 30% below the 200-week moving average. Selling pressure is heavy, so wait for it to stabilize.";
+  } else if (distancePct < -10) {
+    level = "weak";
+    label = "WEAK BUY";
+    detail = "Price is 10–30% below the 200-week moving average. Cheap, but the trend is weak.";
+  } else if (distancePct <= 0) {
     level = "strong";
     label = "STRONG BUY";
-    detail = "Price is at or below the 200-week moving average, a historically deep-value zone.";
+    detail = "Price is at or up to 10% below the 200-week moving average, a historically deep-value zone.";
   } else if (distancePct <= 10) {
     level = "buy";
     label = "BUY ZONE";
