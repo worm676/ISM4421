@@ -3,7 +3,7 @@
 // weekly, and monthly volume plus the 200-week moving average.
 import { toBars, volumeSummary, wma200, buySignal, wmaTrend, weeklyVolatility, entryPlan } from "../lib/metrics.mjs";
 import { chart, json } from "../lib/yahoo.mjs";
-import { getMarket } from "../lib/market.mjs";
+import { getMarket, isCrypto } from "../lib/market.mjs";
 
 export default async (req) => {
   const symbol = (new URL(req.url).searchParams.get("symbol") || "").trim().toUpperCase();
@@ -17,7 +17,7 @@ export default async (req) => {
       chart(symbol, "1d", "6mo"),
       chart(symbol, "1wk", "10y"),
       chart(symbol, "1mo", "5y"),
-      getMarket(),
+      getMarket(isCrypto(symbol) ? "crypto" : "stocks"),
     ]);
 
     const weeklyBars = toBars(weekly);

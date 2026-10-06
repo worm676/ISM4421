@@ -20,7 +20,19 @@ const fmtVol = (n) => {
   return String(Math.round(n));
 };
 const fmtMoney = (n, cur = "USD") =>
-  n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 2 }).format(n);
+  n == null ? "—" : new Intl.NumberFormat("en-US", {
+    style: "currency", currency: cur,
+    // Coins under $1 (DOGE, SHIB) need significant digits, not cents.
+    ...(Math.abs(n) > 0 && Math.abs(n) < 1 ? { maximumSignificantDigits: 4 } : { maximumFractionDigits: 2 }),
+  }).format(n);
+const isCrypto = (symbol) => /-USD$/.test(symbol);
+// Market cap as $4.87T / $20.36B.
+const fmtCap = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(n);
+// Show coins as BTC or UNI rather than Yahoo's BTC-USD / UNI7083-USD.
+const tickerLabel = (symbol) => (isCrypto(symbol) ? symbol.replace(/\d*-USD$/, "") : symbol);
+// Share/coin counts: 1,250 or 0.0412, and 70.6M for cheap coins like SHIB.
+const fmtUnits = (n) =>
+  new Intl.NumberFormat("en-US", n >= 1e6 ? { notation: "compact", maximumFractionDigits: 2 } : { maximumFractionDigits: n >= 100 ? 0 : 4 }).format(n);
 const fmtPct = (n) => (n == null ? "—" : (n > 0 ? "+" : "") + n.toFixed(1) + "%");
 const fmtDate = (t, tf) => {
   const d = new Date(t);
@@ -86,6 +98,8 @@ async function loadProfile(symbol) {
   $("about-text").textContent = "Loading company profile…";
   $("about-more").hidden = true;
   $("ratings").hidden = true;
+  $("partners").hidden = true;
+  $("about-cap").hidden = true;
   let p = profileCache.get(symbol);
   if (!p) {
     try {
@@ -103,8 +117,15 @@ async function loadProfile(symbol) {
 
 function renderProfile(symbol, p) {
   const pr = p.profile;
+  // Total market cap leads the description: $4.87T, with the full dollar figure beside it.
+  $("about-cap").hidden = !p.marketCap;
+  if (p.marketCap) {
+    $("cap-value").textContent = fmtCap(p.marketCap);
+    $("cap-full").textContent = `($${Math.round(p.marketCap).toLocaleString("en-US")})`;
+  }
   $("about-name").textContent = p.name || state.data?.name || symbol;
   if (!pr) {
+    $("about-facts").textContent = "";
     $("about-text").textContent = p.error ? "Company profile is unavailable right now." : "No company description is available for this ticker.";
   } else {
     const facts = [
@@ -119,6 +140,7 @@ function renderProfile(symbol, p) {
     $("about-more").textContent = "Read more";
     $("about-more").hidden = pr.summary.length < 320;
   }
+  renderPartnerships(p);
   const c = p.consensus;
   $("ratings").hidden = !c;
   if (!c) return;
@@ -132,6 +154,18 @@ function renderProfile(symbol, p) {
     ? ` Average 12-month price target ${fmtMoney(c.targetMean, state.data.currency)} (${fmtPct(((c.targetMean - state.data.price) / state.data.price) * 100)} from today${c.targetLow != null && c.targetHigh != null ? `; range ${fmtMoney(c.targetLow, state.data.currency)}–${fmtMoney(c.targetHigh, state.data.currency)}` : ""}).`
     : "";
   $("r-note").textContent = `Based on ${c.analysts} Wall Street analyst rating${c.analysts === 1 ? "" : "s"} this month.${target} Analyst views are opinions, not guarantees.`;
+}
+function renderPartnerships(p) {
+  const list = p.partnerships ?? [];
+  $("partners").hidden = !!p.error;
+  $("partner-list").innerHTML = list.length
+    ? list.map((n) => {
+        const date = n.published ? new Date(n.published).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+        const safe = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+        const href = /^https:\/\//.test(n.link) ? safe(n.link) : "#";
+        return `<li><a href="${href}" target="_blank" rel="noopener">${safe(n.title)}</a><span class="small muted">${safe([n.source, date].filter(Boolean).join(" · "))}</span></li>`;
+      }).join("")
+    : `<li class="muted small">No partnership news in the last 6 months.</li>`;
 }
 $("about-more").addEventListener("click", () => {
   const clamped = $("about-text").classList.toggle("clamped");
@@ -172,7 +206,7 @@ function renderHero() {
 
 // ---------- market phase (S&P 500 vs its own 200 WMA) ----------
 function renderMarket(m) {
-  if (!m) return;
+  if (!m || m.symbol !== "^GSPC") return; // the banner is the stock market; crypto uses Bitcoin per coin
   const el = $("marketBanner");
   el.hidden = false;
   el.dataset.phase = m.bull ? "bull" : "bear";
@@ -214,9 +248,10 @@ function renderPlan() {
   const m = d.market;
   $("mkt-icon").textContent = !m ? "•" : m.bull ? "✓" : "!";
   $("mkt-icon").className = "check " + (!m ? "" : m.bull ? "ok" : "warn");
-  $("mkt-text").textContent = !m ? "S&P 500 data unavailable."
-    : m.bull ? "S&P 500 is above its 200 WMA (bull phase), a favorable environment."
-    : "S&P 500 is below its 200 WMA. Be selective and defensive.";
+  const mName = m?.name ?? (isCrypto(d.symbol) ? "Bitcoin" : "S&P 500");
+  $("mkt-text").textContent = !m ? `${mName} data unavailable.`
+    : m.bull ? `${mName} is above its 200 WMA (bull phase), a favorable environment.`
+    : `${mName} is below its 200 WMA. Be selective and defensive.`;
 
   const p = d.plan;
   const { acct, risk } = getRisk();
@@ -230,10 +265,14 @@ function renderPlan() {
   const avgEntry = p.tranches.reduce((a, b) => a + b, 0) / 3;
   const perShareRisk = avgEntry - p.stop;
   const riskDollars = acct * (risk / 100);
-  const each = Math.floor(riskDollars / perShareRisk / 3);
+  // Coins can be bought in fractions; stocks in whole shares.
+  const crypto = isCrypto(d.symbol);
+  const rawEach = riskDollars / perShareRisk / 3;
+  const each = crypto ? Math.floor(rawEach * 1e4) / 1e4 : Math.floor(rawEach);
+  $("plan-unit").textContent = crypto ? "Units" : "Shares";
   const names = ["1/3 at +5% above WMA", "1/3 at the 200 WMA", "1/3 at 5% below WMA"];
   $("planBody").innerHTML =
-    p.tranches.map((px, i) => `<tr><td>${names[i]}</td><td>${fmtMoney(px, d.currency)}</td><td>${each}</td></tr>`).join("") +
+    p.tranches.map((px, i) => `<tr><td>${names[i]}</td><td>${fmtMoney(px, d.currency)}</td><td>${fmtUnits(each)}</td></tr>`).join("") +
     `<tr class="stop"><td>Stop-loss (below all entries)</td><td>${fmtMoney(p.stop, d.currency)}</td><td>—</td></tr>`;
   const cost = each * p.tranches.reduce((a, b) => a + b, 0);
   const loss = each * p.tranches.reduce((a, px) => a + (px - p.stop), 0);
@@ -410,16 +449,16 @@ async function scan() {
   [...body.rows].sort((a, b) => a.dataset.dist - b.dataset.dist).forEach((r) => body.appendChild(r));
 }
 
-// ---------- top section: at/below WMA, S&P top 20, or extended ----------
+// ---------- top section: crypto sweetspot, sweetspot, S&P top 20, or extended ----------
 const VIEW_KEY = "owl-top-view";
 const VIEWS = {
-  below: { title: "At or below the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is at or below its 200-week moving average right now." },
+  crypto: { title: "Crypto Sweetspot: within 6% of the 200 WMA", url: "/api/crypto", empty: "No major cryptocurrency is in the sweetspot right now." },
   sweetspot: { title: "Sweetspot: within 6% of the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is in the sweetspot right now." },
   top: { title: "S&P 500 Top 20", url: "/api/top" },
   extended: { title: "Extended: more than 30% above the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is extended right now." },
 };
 const topData = {};
-let topView = "below";
+let topView = "crypto";
 try { if (VIEWS[localStorage.getItem(VIEW_KEY)]) topView = localStorage.getItem(VIEW_KEY); } catch {}
 
 function topCard(s, rank, sub) {
@@ -428,12 +467,12 @@ function topCard(s, rank, sub) {
   }
   const chg = s.changePct;
   return `<button class="top-card" data-s="${s.symbol}" title="${s.name}">
-    <div class="top-row"><span class="rank">${rank}</span><span class="tk">${s.symbol}</span>
+    <div class="top-row"><span class="rank">${rank}</span><span class="tk">${tickerLabel(s.symbol)}</span>
       <span class="chg ${chg >= 0 ? "up" : "down"}">${fmtPct(chg)}</span></div>
     <div class="nm">${s.name}</div>
-    ${s.turningUp && topView === "sweetspot" ? `<div class="bounce">↑ Turning up this week</div>` : ""}
+    ${s.turningUp && (topView === "sweetspot" || topView === "crypto") ? `<div class="bounce">↑ Turning up this week</div>` : ""}
     ${s.signal.setup ? `<div class="setup-tag" data-setup="${s.signal.setup.key}" title="${s.signal.setup.detail}">${s.signal.setup.label}</div>` : ""}
-    <div class="top-row"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">${sub}</span></div>
+    <div class="top-row price-line"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">${sub}</span></div>
     <div class="top-row"><span class="pill" data-level="${s.signal.level}">${s.signal.label}</span>
       <span class="muted small nowrap">${fmtPct(s.signal.distancePct)}<span class="wl"> WMA</span></span></div>
   </button>`;
@@ -447,7 +486,7 @@ function renderTop() {
   const data = topData[v.url];
   if (!data) {
     grid.innerHTML = Array.from({ length: 20 }, () => `<div class="top-card skeleton"></div>`).join("");
-    $("top-meta").textContent = topView === "top" ? "Loading…" : "Screening all S&P 500 stocks…";
+    $("top-meta").textContent = topView === "top" ? "Loading…" : topView === "crypto" ? "Screening major cryptocurrencies…" : "Screening all S&P 500 stocks…";
     return;
   }
   if (data.error) {
@@ -466,8 +505,12 @@ function renderTop() {
   grid.innerHTML = list.length
     ? list.map((s, i) => topCard(s, i + 1, `WMA ${fmtMoney(s.wma200)}`)).join("")
     : `<div class="muted top-empty">${v.empty}</div>`;
-  const order = { below: "deepest below first", sweetspot: "good setups first, then turning up, then closest to the WMA", extended: "most extended first" }[topView];
-  $("top-meta").textContent = `${total > list.length ? `Showing ${list.length} of ${total}` : `${total} found`} out of ${data.counts.screened} S&P 500 stocks · ${order} · updated ${time}`;
+  const order = { crypto: "good setups first, then turning up, then closest to the WMA", sweetspot: "good setups first, then turning up, then closest to the WMA", extended: "most extended first" }[topView];
+  const universe = topView === "crypto" ? "major cryptocurrencies" : "S&P 500 stocks";
+  const btc = topView === "crypto" && data.market
+    ? ` · Bitcoin ${fmtPct(data.market.distancePct)} vs its 200 WMA (${data.market.bull ? "crypto bull phase" : "crypto bear phase: be selective"})`
+    : "";
+  $("top-meta").textContent = `${total > list.length ? `Showing ${list.length} of ${total}` : `${total} found`} out of ${data.counts.screened} ${universe} · ${order}${btc} · updated ${time}`;
 }
 
 async function loadTop(force = false) {

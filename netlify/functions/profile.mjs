@@ -1,7 +1,9 @@
 // GET /api/profile?symbol=AAPL
-// Company description and analyst buy / hold / sell consensus.
+// Company description, market cap, recent partnership news and analyst
+// buy / hold / sell consensus.
 import { analystConsensus, companyProfile } from "../lib/metrics.mjs";
 import { quoteSummary, json } from "../lib/yahoo.mjs";
+import { partnershipNews } from "../lib/news.mjs";
 
 export default async (req) => {
   const symbol = (new URL(req.url).searchParams.get("symbol") || "").trim().toUpperCase();
@@ -10,11 +12,15 @@ export default async (req) => {
   }
   try {
     const r = await quoteSummary(symbol, ["assetProfile", "recommendationTrend", "financialData", "price"]);
+    const name = r.price?.longName || r.price?.shortName || symbol;
+    const partnerships = await partnershipNews(name);
     return json(
       200,
       {
         symbol,
-        name: r.price?.longName || r.price?.shortName || symbol,
+        name,
+        marketCap: r.price?.marketCap?.raw ?? null,
+        partnerships,
         profile: companyProfile(r.assetProfile),
         consensus: analystConsensus(r.recommendationTrend, r.financialData),
         fetchedAt: Date.now(),

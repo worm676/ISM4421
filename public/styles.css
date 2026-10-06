@@ -68,7 +68,7 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .top-card .bounce { font-size: 11.5px; font-weight: 700; color: #0a7d3b; }
 @media (prefers-color-scheme: dark) { .top-card .bounce { color: #5fd38d; } }
 .top-empty { grid-column: 1 / -1; padding: 18px; border: 1px dashed var(--border); border-radius: 12px; }
-.top-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 6px; }
+.top-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
 .top-card {
   display: flex; flex-direction: column; gap: 6px; text-align: left; font: inherit; color: var(--text);
   background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
@@ -79,9 +79,10 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 @keyframes shimmer { to { background-position: -200% 0; } }
 .top-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-variant-numeric: tabular-nums; }
 .top-card .rank { font-size: 11px; font-weight: 700; color: var(--muted); min-width: 16px; }
-.top-card .tk { font-weight: 700; flex: 1; }
+.top-card .tk { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .top-card .chg { font-size: 12.5px; font-weight: 600; }
 .top-card .px { font-weight: 600; }
+.top-card .price-line { flex-wrap: wrap; row-gap: 0; }
 .top-card .pill { font-size: 10px; padding: 2px 6px; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
 
@@ -179,12 +180,12 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .loading { opacity: .5; transition: opacity .2s; }
 
 @media (max-width: 900px) {
-  .top-grid { grid-template-columns: repeat(3, 1fr); }
+  .top-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tiles { grid-template-columns: repeat(2, 1fr); }
   .hero { grid-template-columns: 1fr; grid-template-areas: "left" "right" "extra"; grid-template-rows: auto; }
 }
 @media (max-width: 520px) {
-  .top-grid { grid-template-columns: repeat(2, 1fr); }
+  .top-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .top-card .wl { display: none; }
   #viewTabs { width: 100%; }
   #viewTabs button { flex: 1; padding: 6px 4px; font-size: 12.5px; }
@@ -285,3 +286,17 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .bar i.buy { background: #0a7d3b; } .bar i.hold { background: #b26a00; } .bar i.sell { background: var(--fau-red); }
 .ratings p { margin: 8px 0 0; }
 .hero-extra { display: grid; gap: 18px; align-content: start; }
+
+/* Recent partnerships (inside About) */
+.partners { margin-top: 12px; }
+.partners h5 { margin: 0 0 6px; font-size: 13.5px; }
+.partner-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.partner-list li { display: grid; gap: 1px; font-size: 13.5px; line-height: 1.4; }
+.partner-list a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 2px; }
+.partner-list a:hover { text-decoration-color: currentColor; }
+.partners p { margin: 6px 0 0; }
+
+/* Total market cap, leading the description */
+.about-cap { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin: 2px 0 8px; font-size: 14px; }
+.about-cap strong { font-size: 20px; font-variant-numeric: tabular-nums; color: var(--fau-blue); }
+@media (prefers-color-scheme: dark) { .about-cap strong { color: #9cc3f0; } }
