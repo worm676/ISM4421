@@ -44,6 +44,19 @@ test("pickPartnerships keeps real deals, skips firm names and duplicates, newest
   assert.equal(pickPartnerships(sofi, "SoFi", 1).length, 1);
 });
 
+test("pickPartnerships ignores look-alike names and companies named Alliance", () => {
+  const items = parseRss([
+    item("Sofi Tukker Teams Up With OneRepublic For Collaborative New Single", "mxdwn Music", "Sat, 26 Sep 2026 10:00:00 GMT"),
+    item("SoFi and Mastercard's new stablecoin partnership is a big deal", "Yahoo Finance", "Wed, 23 Sep 2026 10:00:00 GMT"),
+    item("JPMorgan Chase Issues Pessimistic Forecast for Western Alliance Bancorporation Stock Price", "MarketBeat", "Thu, 01 Oct 2026 10:00:00 GMT"),
+    item("Can JPMorgan's $20 Billion QIA Partnership Strengthen its Global Asset Management Business?", "Yahoo Finance", "Mon, 28 Sep 2026 10:00:00 GMT"),
+    item("Nvidia (NVDA) Forms Alliance To Build A Power Flexible AI Data Center", "Yahoo Finance", "Sat, 19 Sep 2026 10:00:00 GMT"),
+  ].join(""));
+  assert.deepEqual(pickPartnerships(items, "SoFi Technologies, Inc.").map((n) => n.source), ["Yahoo Finance"]);
+  assert.deepEqual(pickPartnerships(items, "JPMorgan Chase & Co.").map((n) => n.title.slice(0, 12)), ["Can JPMorgan"]);
+  assert.equal(pickPartnerships(items, "NVIDIA Corporation").length, 1); // all-caps name still matches "Nvidia"
+});
+
 test("partnershipNews returns [] instead of failing when Google News is down", async () => {
   const orig = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error("network down"); };

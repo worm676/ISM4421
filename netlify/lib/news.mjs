@@ -31,6 +31,8 @@ export function parseRss(xml) {
 // Words that signal a partnership. "Partners" alone is skipped because many
 // firm names contain it ("Miller Value Partners"); "partners with" is kept.
 const DEAL = /\bpartnership|\bpartner(s|ed|ing)? with\b|\bpartnering\b|\bteam(s|ed)? up\b|\bcollaborat\w*|\balliance\b|\bjoint venture\b|\btie-up\b/i;
+// Company names that contain deal words ("Western Alliance Bancorporation").
+const NAMED = /\b(Western|Star|Pacific) Alliance\b|\bAlliance (Bancorp\w*|Bernstein|Resource|Data|Laundry|Entertainment)\b|\bAllianceBernstein\b/i;
 
 const words = (t) => new Set(t.toLowerCase().match(/[a-z0-9]+/g) || []);
 function similar(a, b) {
@@ -45,10 +47,12 @@ function similar(a, b) {
 export function pickPartnerships(items, name, limit = 5) {
   const key = searchName(name).split(/\s+/)[0];
   if (!key) return [];
-  const mentions = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
+  // Names with inner capitals (SoFi, JPMorgan) must match exactly, so "Sofi Tukker" doesn't count.
+  const exactCase = /[a-z]/.test(key) && /^.+[A-Z]/.test(key);
+  const mentions = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, exactCase ? "" : "i");
   const kept = [];
   for (const it of [...items].sort((a, b) => (b.published ?? 0) - (a.published ?? 0))) {
-    if (!it.title || !DEAL.test(it.title) || !mentions.test(it.title)) continue;
+    if (!it.title || !DEAL.test(it.title.replace(NAMED, "")) || !mentions.test(it.title)) continue;
     if (kept.some((k) => similar(k.title, it.title))) continue;
     kept.push(it);
     if (kept.length >= limit) break;
