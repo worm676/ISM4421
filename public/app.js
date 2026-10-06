@@ -51,6 +51,8 @@ function getWatchlist() {
 }
 function setWatchlist(list) {
   try { localStorage.setItem(WATCH_KEY, JSON.stringify(list)); } catch {}
+  // auth.js listens for this to save the watchlist to a signed-in user's profile.
+  document.dispatchEvent(new CustomEvent("owl:watchlist", { detail: list }));
 }
 
 // ---------- render: main symbol ----------
@@ -62,6 +64,7 @@ async function load(symbol) {
   try {
     state.data = await fetchMarket(symbol);
     renderHero();
+    loadProfile(symbol);
     renderTiles();
     renderVolChart();
     renderWmaChart();
@@ -74,6 +77,66 @@ async function load(symbol) {
     document.querySelector("main").classList.remove("loading");
   }
 }
+
+// ---------- company profile + analyst consensus ----------
+const profileCache = new Map();
+async function loadProfile(symbol) {
+  $("about-name").textContent = symbol;
+  $("about-facts").textContent = "";
+  $("about-text").textContent = "Loading company profile…";
+  $("about-more").hidden = true;
+  $("ratings").hidden = true;
+  let p = profileCache.get(symbol);
+  if (!p) {
+    try {
+      const res = await fetch(`/api/profile?symbol=${encodeURIComponent(symbol)}`);
+      p = await res.json();
+      if (!res.ok || p.error) throw new Error(p.error || `HTTP ${res.status}`);
+      profileCache.set(symbol, p);
+    } catch {
+      p = { error: true };
+    }
+  }
+  if (state.data?.symbol !== symbol) return; // user picked another stock meanwhile
+  renderProfile(symbol, p);
+}
+
+function renderProfile(symbol, p) {
+  const pr = p.profile;
+  $("about-name").textContent = p.name || state.data?.name || symbol;
+  if (!pr) {
+    $("about-text").textContent = p.error ? "Company profile is unavailable right now." : "No company description is available for this ticker.";
+  } else {
+    const facts = [
+      [pr.sector, pr.industry].filter(Boolean).join(" · "),
+      pr.headquarters,
+      pr.employees ? `${pr.employees.toLocaleString()} employees` : "",
+    ].filter(Boolean);
+    $("about-facts").innerHTML = facts.map((f) => `<span>${f.replace(/</g, "&lt;")}</span>`).join("") +
+      (pr.website && /^https?:\/\//.test(pr.website) ? `<a href="${pr.website.replace(/"/g, "")}" target="_blank" rel="noopener">${pr.website.replace(/^https?:\/\/(www\.)?/, "").replace(/</g, "")} ↗</a>` : "");
+    $("about-text").textContent = pr.summary;
+    $("about-text").classList.add("clamped");
+    $("about-more").textContent = "Read more";
+    $("about-more").hidden = pr.summary.length < 320;
+  }
+  const c = p.consensus;
+  $("ratings").hidden = !c;
+  if (!c) return;
+  for (const k of ["buy", "hold", "sell"]) {
+    $(`r-${k}`).textContent = `${c[k]}%`;
+    $(`r-${k}-bar`).style.width = `${c[k]}%`;
+  }
+  $("r-verdict").textContent = `Consensus: ${c.verdict}`;
+  $("r-verdict").dataset.verdict = c.verdict.toLowerCase();
+  const target = c.targetMean != null && state.data?.price
+    ? ` Average 12-month price target ${fmtMoney(c.targetMean, state.data.currency)} (${fmtPct(((c.targetMean - state.data.price) / state.data.price) * 100)} from today${c.targetLow != null && c.targetHigh != null ? `; range ${fmtMoney(c.targetLow, state.data.currency)}–${fmtMoney(c.targetHigh, state.data.currency)}` : ""}).`
+    : "";
+  $("r-note").textContent = `Based on ${c.analysts} Wall Street analyst rating${c.analysts === 1 ? "" : "s"} this month.${target} Analyst views are opinions, not guarantees.`;
+}
+$("about-more").addEventListener("click", () => {
+  const clamped = $("about-text").classList.toggle("clamped");
+  $("about-more").textContent = clamped ? "Read more" : "Show less";
+});
 
 function renderHero() {
   const d = state.data;
@@ -96,6 +159,101 @@ function renderHero() {
   $("h-signal-detail").textContent = s.detail;
   $("h-wma").textContent = fmtMoney(d.wma200.value, d.currency);
   $("h-zone").textContent = d.wma200.value ? fmtMoney(d.wma200.value * 1.1, d.currency) : "—";
+  $("h-trend").textContent = d.trend?.rising == null ? "—" : `${d.trend.rising ? "Rising" : "Falling"} (${fmtPct(d.trend.slopePct)} / 13 wk)`;
+  $("h-setup").hidden = !s.setup;
+  if (s.setup) {
+    $("h-setup").dataset.setup = s.setup.key;
+    $("h-setup-label").textContent = s.setup.label;
+    $("h-setup-detail").textContent = s.setup.detail;
+  }
+  renderMarket(d.market);
+  renderPlan();
+}
+
+// ---------- market phase (S&P 500 vs its own 200 WMA) ----------
+function renderMarket(m) {
+  if (!m) return;
+  const el = $("marketBanner");
+  el.hidden = false;
+  el.dataset.phase = m.bull ? "bull" : "bear";
+  el.innerHTML = m.bull
+    ? `<strong>Market: long-term bull phase.</strong> The S&amp;P 500 is ${fmtPct(m.distancePct)} vs its 200 WMA (${fmtMoney(m.wma200).replace("$", "")}). Pullbacks to the 200 WMA in quality stocks are more attractive.`
+    : `<strong>Market: below its 200 WMA.</strong> The S&amp;P 500 is ${fmtPct(m.distancePct)} vs its 200 WMA (${fmtMoney(m.wma200).replace("$", "")}). Be more selective and defensive: only the strongest businesses, smaller and slower entries.`;
+}
+
+// ---------- review checklist + staged entry plan ----------
+const RISK_KEY = "owl-risk";
+function getRisk() {
+  try {
+    const r = JSON.parse(localStorage.getItem(RISK_KEY));
+    if (r && r.acct > 0 && r.risk > 0) return r;
+  } catch {}
+  return { acct: 10000, risk: 1 };
+}
+function renderPlan() {
+  const d = state.data;
+  if (!d) return;
+  const s = d.signal;
+  const sym = encodeURIComponent(d.symbol);
+  $("link-fin").href = `https://finance.yahoo.com/quote/${sym}/financials`;
+  $("link-stats").href = `https://finance.yahoo.com/quote/${sym}/key-statistics`;
+  for (const cb of document.querySelectorAll("#plan .checklist input")) cb.checked = false;
+
+  const near = s.distancePct != null && s.distancePct <= 5;
+  $("plan-trigger").textContent = s.distancePct == null ? "" : near
+    ? `Review triggered: ${d.symbol} is within 5% of its 200 WMA`
+    : `No review yet: ${d.symbol} is ${fmtPct(s.distancePct)} from its 200 WMA. Wait for it to come within 5%.`;
+  $("plan-trigger").className = "small " + (near ? "trigger-on" : "muted");
+
+  const up = d.trend?.rising;
+  $("tech-icon").textContent = up == null ? "•" : up ? "✓" : "✗";
+  $("tech-icon").className = "check " + (up == null ? "" : up ? "ok" : "bad");
+  $("tech-text").textContent = up == null ? "Not enough history to judge the trend."
+    : up ? "The 200 WMA is rising, so a drop to it is a pullback in an uptrend."
+    : "The 200 WMA is falling, so a drop to it is a breakdown in a downtrend. Be careful.";
+  const m = d.market;
+  $("mkt-icon").textContent = !m ? "•" : m.bull ? "✓" : "!";
+  $("mkt-icon").className = "check " + (!m ? "" : m.bull ? "ok" : "warn");
+  $("mkt-text").textContent = !m ? "S&P 500 data unavailable."
+    : m.bull ? "S&P 500 is above its 200 WMA (bull phase), a favorable environment."
+    : "S&P 500 is below its 200 WMA. Be selective and defensive.";
+
+  const p = d.plan;
+  const { acct, risk } = getRisk();
+  $("acct").value = acct;
+  $("risk").value = risk;
+  if (!p) {
+    $("planBody").innerHTML = `<tr><td colspan="3" class="muted">Needs 200 weeks of history.</td></tr>`;
+    $("planNote").textContent = "";
+    return;
+  }
+  const avgEntry = p.tranches.reduce((a, b) => a + b, 0) / 3;
+  const perShareRisk = avgEntry - p.stop;
+  const riskDollars = acct * (risk / 100);
+  const each = Math.floor(riskDollars / perShareRisk / 3);
+  const names = ["1/3 at +5% above WMA", "1/3 at the 200 WMA", "1/3 at 5% below WMA"];
+  $("planBody").innerHTML =
+    p.tranches.map((px, i) => `<tr><td>${names[i]}</td><td>${fmtMoney(px, d.currency)}</td><td>${each}</td></tr>`).join("") +
+    `<tr class="stop"><td>Stop-loss (below all entries)</td><td>${fmtMoney(p.stop, d.currency)}</td><td>—</td></tr>`;
+  const cost = each * p.tranches.reduce((a, b) => a + b, 0);
+  const loss = each * p.tranches.reduce((a, px) => a + (px - p.stop), 0);
+  const why = 2 * p.weeklyVolPct < p.cushionPct
+    ? `the 3% minimum (this stock's typical weekly move is only ${p.weeklyVolPct.toFixed(1)}%)`
+    : 2 * p.weeklyVolPct > p.cushionPct
+      ? `the 15% maximum (this stock's typical weekly move is ${p.weeklyVolPct.toFixed(1)}%)`
+      : `about 2× this stock's typical weekly move of ${p.weeklyVolPct.toFixed(1)}%`;
+  $("planNote").textContent = each > 0
+    ? `Full position ≈ ${fmtMoney(cost, d.currency)} (${((cost / acct) * 100).toFixed(0)}% of account). If every stage fills and the stop is hit, you lose about ${fmtMoney(loss, d.currency)} (${((loss / acct) * 100).toFixed(2)}%, within your ${risk}% limit). The stop sits ${p.cushionPct.toFixed(1)}% under the last entry: ${why}.`
+    : `Your risk budget of ${fmtMoney(riskDollars, d.currency)} is too small for one share per stage at this price. Raise the account size or risk %.`;
+}
+for (const id of ["acct", "risk"]) {
+  $(id).addEventListener("change", () => {
+    const acct = Number($("acct").value), risk = Number($("risk").value);
+    if (acct > 0 && risk > 0) {
+      try { localStorage.setItem(RISK_KEY, JSON.stringify({ acct, risk })); } catch {}
+    }
+    renderPlan();
+  });
 }
 
 function rvolBadge(r) {
@@ -237,6 +395,7 @@ async function scan() {
           <td class="${s.distancePct != null && s.distancePct <= 0 ? "up" : ""}">${fmtPct(s.distancePct)}</td>
           <td>${d.volume.day?.relativeVolume != null ? d.volume.day.relativeVolume.toFixed(2) + "×" : "—"}</td>
           <td><span class="pill" data-level="${s.level}">${s.label}</span>${s.volumeConfirmed && (s.level === "strong" || s.level === "buy") ? " 🔥" : ""}
+              ${s.setup ? `<span class="setup-tag" data-setup="${s.setup.key}" title="${s.setup.detail}">${s.setup.label}</span>` : ""}
               <button class="rm" data-rm="${sym}" title="Remove ${sym}" aria-label="Remove ${sym}">×</button></td>`;
         row.dataset.dist = s.distancePct ?? 9999;
       } catch (err) {
@@ -251,38 +410,105 @@ async function scan() {
   [...body.rows].sort((a, b) => a.dataset.dist - b.dataset.dist).forEach((r) => body.appendChild(r));
 }
 
-// ---------- S&P 500 top 20 ----------
-async function loadTop() {
+// ---------- top section: at/below WMA, S&P top 20, or extended ----------
+const VIEW_KEY = "owl-top-view";
+const VIEWS = {
+  below: { title: "At or below the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is at or below its 200-week moving average right now." },
+  sweetspot: { title: "Sweetspot: at the 200 WMA to 7% below", url: "/api/screen", empty: "No S&P 500 stock is in the sweetspot right now." },
+  top: { title: "S&P 500 Top 20", url: "/api/top" },
+  extended: { title: "Extended: more than 30% above the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is extended right now." },
+};
+const topData = {};
+let topView = "below";
+try { if (VIEWS[localStorage.getItem(VIEW_KEY)]) topView = localStorage.getItem(VIEW_KEY); } catch {}
+
+function topCard(s, rank, sub) {
+  if (s.error) {
+    return `<button class="top-card" data-s="${s.symbol}"><div class="top-row"><span class="rank">${rank}</span><span class="tk">${s.symbol}</span></div><div class="muted small">Unavailable</div></button>`;
+  }
+  const chg = s.changePct;
+  return `<button class="top-card" data-s="${s.symbol}" title="${s.name}">
+    <div class="top-row"><span class="rank">${rank}</span><span class="tk">${s.symbol}</span>
+      <span class="chg ${chg >= 0 ? "up" : "down"}">${fmtPct(chg)}</span></div>
+    <div class="nm">${s.name}</div>
+    ${s.turningUp && topView === "sweetspot" ? `<div class="bounce">↑ Turning up this week</div>` : ""}
+    ${s.signal.setup ? `<div class="setup-tag" data-setup="${s.signal.setup.key}" title="${s.signal.setup.detail}">${s.signal.setup.label}</div>` : ""}
+    <div class="top-row"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">${sub}</span></div>
+    <div class="top-row"><span class="pill" data-level="${s.signal.level}">${s.signal.label}</span>
+      <span class="muted small nowrap">${fmtPct(s.signal.distancePct)}<span class="wl"> WMA</span></span></div>
+  </button>`;
+}
+
+function renderTop() {
   const grid = $("topGrid");
-  if (!grid.children.length) {
+  const v = VIEWS[topView];
+  $("top-title").textContent = v.title;
+  for (const b of $("viewTabs").children) b.setAttribute("aria-selected", b.dataset.view === topView);
+  const data = topData[v.url];
+  if (!data) {
     grid.innerHTML = Array.from({ length: 20 }, () => `<div class="top-card skeleton"></div>`).join("");
+    $("top-meta").textContent = topView === "top" ? "Loading…" : "Screening all S&P 500 stocks…";
+    return;
   }
-  try {
-    const res = await fetch("/api/top");
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
-    grid.innerHTML = data.stocks
-      .map((s) => {
-        if (s.error) {
-          return `<button class="top-card" data-s="${s.symbol}"><div class="top-row"><span class="rank">${s.rank}</span><span class="tk">${s.symbol}</span></div><div class="muted small">Unavailable</div></button>`;
-        }
-        const chg = s.changePct;
-        return `<button class="top-card" data-s="${s.symbol}" title="${s.name}">
-          <div class="top-row"><span class="rank">${s.rank}</span><span class="tk">${s.symbol}</span>
-            <span class="chg ${chg >= 0 ? "up" : "down"}">${fmtPct(chg)}</span></div>
-          <div class="top-row"><span class="px">${fmtMoney(s.price)}</span><span class="muted small">Vol ${fmtVol(s.dayVolume)}</span></div>
-          <div class="top-row"><span class="pill" data-level="${s.signal.level}">${s.signal.label}</span>
-            <span class="muted small nowrap">${fmtPct(s.signal.distancePct)}<span class="wl"> WMA</span></span></div>
-        </button>`;
-      })
-      .join("");
-    $("top-meta").textContent = `Ranked by index weight (${data.asOf}) · updated ${new Date(data.fetchedAt).toLocaleTimeString()}`;
-  } catch (err) {
-    grid.innerHTML = `<div class="muted">Could not load the top 20: ${err.message}</div>`;
+  if (data.error) {
+    grid.innerHTML = `<div class="muted top-empty">Could not load this list: ${data.error}</div>`;
+    $("top-meta").textContent = "";
+    return;
   }
+  const time = new Date(data.fetchedAt).toLocaleTimeString();
+  if (topView === "top") {
+    grid.innerHTML = data.stocks.map((s) => topCard(s, s.rank, `Vol ${fmtVol(s.dayVolume)}`)).join("");
+    $("top-meta").textContent = `Ranked by index weight (${data.asOf}) · updated ${time}`;
+    return;
+  }
+  const list = data[topView];
+  const total = data.counts[topView];
+  grid.innerHTML = list.length
+    ? list.map((s, i) => topCard(s, i + 1, `WMA ${fmtMoney(s.wma200)}`)).join("")
+    : `<div class="muted top-empty">${v.empty}</div>`;
+  const order = { below: "deepest below first", sweetspot: "good setups first, then turning up, then closest to the WMA", extended: "most extended first" }[topView];
+  $("top-meta").textContent = `${total > list.length ? `Showing ${list.length} of ${total}` : `${total} found`} out of ${data.counts.screened} S&P 500 stocks · ${order} · updated ${time}`;
+}
+
+async function loadTop(force = false) {
+  const url = VIEWS[topView].url;
+  if (!topData[url] || force) {
+    if (!topData[url]) renderTop();
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      topData[url] = data;
+      renderMarket(data.market);
+    } catch (err) {
+      if (!topData[url] || topData[url].error) topData[url] = { error: err.message };
+    }
+  }
+  if (VIEWS[topView].url === url) renderTop();
 }
 
 // ---------- events ----------
+function setTopView(v) {
+  if (!VIEWS[v] || v === topView) return;
+  topView = v;
+  try { localStorage.setItem(VIEW_KEY, v); } catch {}
+  loadTop();
+}
+$("viewTabs").addEventListener("click", (e) => setTopView(e.target.closest("[data-view]")?.dataset.view));
+
+// Hooks for auth.js to apply a signed-in user's saved profile.
+window.owl = {
+  getWatchlist,
+  getView: () => topView,
+  applyProfile({ watchlist, view }) {
+    if (Array.isArray(watchlist) && watchlist.length) {
+      try { localStorage.setItem(WATCH_KEY, JSON.stringify(watchlist)); } catch {}
+      renderChips();
+      scan();
+    }
+    setTopView(view);
+  },
+};
 $("topGrid").addEventListener("click", (e) => {
   const s = e.target.closest("[data-s]")?.dataset.s;
   if (s) load(s).then(() => $("hero").scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -339,7 +565,7 @@ loadTop();
 load(initial).then(scan);
 setInterval(() => {
   if (document.hidden) return;
-  loadTop();
+  loadTop(true);
   if (state.data) {
     cache.delete(state.data.symbol);
     load(state.data.symbol);

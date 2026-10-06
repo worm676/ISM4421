@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="vendor/chart.umd.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="vendor/supabase/supabase.js" defer></script>
+  <script src="auth.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -32,15 +34,26 @@
         <input id="symbol" name="symbol" placeholder="Ticker (e.g. AAPL)" aria-label="Ticker symbol" maxlength="15" />
         <button type="submit">Track</button>
       </form>
+      <button type="button" class="account-btn" id="accountBtn">Log in</button>
     </div>
     <div class="stripe"></div>
   </header>
 
   <main class="wrap">
+    <div class="market-banner" id="marketBanner" hidden></div>
+
     <section class="top20">
       <div class="card-head">
-        <h2 class="section-title">S&amp;P 500 Top 20</h2>
-        <span class="muted small" id="top-meta">Largest companies by index weight</span>
+        <div>
+          <h2 class="section-title" id="top-title">At or below the 200 WMA</h2>
+          <span class="muted small" id="top-meta">Screening the S&amp;P 500…</span>
+        </div>
+        <div class="tabs" role="tablist" id="viewTabs" aria-label="Choose which stocks to show">
+          <button role="tab" data-view="below" aria-selected="true">At/below WMA</button>
+          <button role="tab" data-view="sweetspot" aria-selected="false">Sweetspot</button>
+          <button role="tab" data-view="top" aria-selected="false">S&amp;P Top 20</button>
+          <button role="tab" data-view="extended" aria-selected="false">Extended</button>
+        </div>
       </div>
       <div class="top-grid" id="topGrid"></div>
     </section>
@@ -58,6 +71,7 @@
           <span class="change" id="h-change"></span>
         </div>
         <div class="muted small" id="h-time"></div>
+
       </div>
       <div class="hero-right">
         <div class="signal" id="h-signal" data-level="na">
@@ -65,9 +79,65 @@
           <div class="signal-dist" id="h-signal-dist"></div>
         </div>
         <p class="signal-detail" id="h-signal-detail"></p>
+        <div class="setup" id="h-setup" hidden>
+          <strong id="h-setup-label"></strong>
+          <span id="h-setup-detail"></span>
+        </div>
         <div class="wma-facts">
           <div><span class="muted">200 WMA</span><strong id="h-wma">—</strong></div>
           <div><span class="muted">Buy zone ≤</span><strong id="h-zone">—</strong></div>
+          <div><span class="muted">200 WMA trend</span><strong id="h-trend">—</strong></div>
+        </div>
+      </div>
+      <div class="hero-extra">
+        <div class="about" id="about">
+          <h4>About <span id="about-name"></span></h4>
+          <div class="about-facts small muted" id="about-facts"></div>
+          <p class="about-text clamped" id="about-text">Loading company profile…</p>
+          <button type="button" class="link more" id="about-more" hidden>Read more</button>
+        </div>
+
+        <div class="ratings" id="ratings" hidden>
+          <div class="ratings-head">
+            <h4>Analyst ratings</h4>
+            <span class="verdict" id="r-verdict"></span>
+          </div>
+          <div class="rating-row"><span>Buy</span><div class="bar"><i class="buy" id="r-buy-bar"></i></div><strong id="r-buy">—</strong></div>
+          <div class="rating-row"><span>Hold</span><div class="bar"><i class="hold" id="r-hold-bar"></i></div><strong id="r-hold">—</strong></div>
+          <div class="rating-row"><span>Sell</span><div class="bar"><i class="sell" id="r-sell-bar"></i></div><strong id="r-sell">—</strong></div>
+          <p class="small muted" id="r-note"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card plan" id="plan">
+      <div class="card-head">
+        <h3>Review &amp; entry plan</h3>
+        <span class="muted small" id="plan-trigger"></span>
+      </div>
+      <div class="plan-grid">
+        <div>
+          <h4>1. Review before you buy</h4>
+          <ul class="checklist">
+            <li><label><input type="checkbox" /> <span><strong>Fundamentals still strong:</strong> revenue, earnings and cash flow growing, debt manageable. <a id="link-fin" target="_blank" rel="noopener">Financials ↗</a></span></label></li>
+            <li><label><input type="checkbox" /> <span><strong>Valuation reasonable:</strong> P/E, P/B and cash-flow yield versus the company's own history and peers. <a id="link-stats" target="_blank" rel="noopener">Key statistics ↗</a></span></label></li>
+            <li class="auto"><span class="check" id="tech-icon">•</span> <span><strong>Technical context:</strong> <span id="tech-text">—</span></span></li>
+            <li class="auto"><span class="check" id="mkt-icon">•</span> <span><strong>Market:</strong> <span id="mkt-text">—</span></span></li>
+          </ul>
+        </div>
+        <div>
+          <h4>2. Enter with discipline</h4>
+          <div class="risk-inputs">
+            <label>Account size ($) <input id="acct" type="number" min="0" step="100" inputmode="decimal" /></label>
+            <label>Risk per trade (%) <input id="risk" type="number" min="0.1" max="10" step="0.1" inputmode="decimal" /></label>
+          </div>
+          <div class="table-scroll">
+            <table class="plan-table">
+              <thead><tr><th>Staged entry</th><th>Price</th><th>Shares</th></tr></thead>
+              <tbody id="planBody"></tbody>
+            </table>
+          </div>
+          <p class="muted small" id="planNote"></p>
         </div>
       </div>
     </section>
@@ -122,13 +192,75 @@
       <h3>How the signals work</h3>
       <ul>
         <li><strong>200 WMA</strong> is the average of the last 200 weekly closes (about 4 years). It shows the long-term trend.</li>
-        <li><span class="pill" data-level="strong">STRONG BUY</span>: price is at or below the 200 WMA.</li>
+        <li><span class="pill" data-level="pressure">DOWN PRESSURE</span>: price is more than 30% below the 200 WMA.</li>
+        <li><span class="pill" data-level="weak">WEAK BUY</span>: price is 10–30% below the 200 WMA.</li>
+        <li><span class="pill" data-level="strong">STRONG BUY</span>: price is at the 200 WMA or up to 10% below it.</li>
         <li><span class="pill" data-level="buy">BUY ZONE</span>: price is 0–10% above the 200 WMA.</li>
         <li><span class="pill" data-level="watch">WATCH</span>: price is 10–30% above. <span class="pill" data-level="extended">EXTENDED</span>: price is more than 30% above.</li>
+        <li><strong>Sweetspot</strong> lists stocks sitting at the 200 WMA (up to 1% above) or up to 7% below it, where a bounce off long-term support is most likely. Good buy setups are listed first, then stocks marked <strong>↑ Turning up</strong> (trading above last week's close).</li>
+        <li><strong>Market phase:</strong> when the S&amp;P 500 is above its own 200 WMA the market is in a long-term bull phase, and pullbacks in quality stocks are more attractive. When it is below, be more selective and defensive.</li>
+        <li><strong>Setups</strong> combine the signal with the market and the stock's own trend. <span class="setup-tag" data-setup="good">Good buy setup</span> price is within 10% below to 5% above a rising 200 WMA while the market is in a bull phase. <span class="setup-tag" data-setup="selective">Be selective</span> the same zone, but the market is in a bear phase. <span class="setup-tag" data-setup="breakdown">Breakdown risk</span> the stock's 200 WMA is falling, so it's a breakdown in a downtrend, not a pullback. <span class="setup-tag" data-setup="wait">Wait for pullback</span> 5–10% above the WMA: don't chase.</li>
+        <li><strong>Enter with discipline:</strong> the entry plan splits a position into thirds at 5% above, at, and 5% below the 200 WMA, with a stop under the last third sized to the stock's typical weekly move. Shares are sized so hitting the stop loses only your chosen risk per trade.</li>
+        <li><strong>Patience:</strong> this is a long-term, low-frequency strategy, so expect only a few good setups a year. The 200 WMA is a timing tool, not a substitute for studying the business.</li>
         <li><strong>RVOL</strong> (relative volume) is the last completed period's volume divided by its average. A reading of 1.5× or higher alongside a buy signal counts as volume confirmation.</li>
       </ul>
     </section>
   </main>
+
+  <dialog id="accountDialog" class="account" aria-labelledby="accountTitle">
+    <button type="button" class="close" id="accountClose" aria-label="Close">×</button>
+
+    <div id="authView">
+      <h2 id="accountTitle">Welcome, Owl</h2>
+      <p class="muted small">Log in to save your watchlist and favorite view across devices.</p>
+      <div class="tabs auth-tabs" role="tablist">
+        <button type="button" role="tab" data-mode="login" aria-selected="true">Log in</button>
+        <button type="button" role="tab" data-mode="signup" aria-selected="false">Create account</button>
+      </div>
+      <form id="authForm" class="account-form">
+        <label class="signup-only" hidden>Display name
+          <input name="name" maxlength="40" autocomplete="nickname" />
+        </label>
+        <label>Email
+          <input name="email" type="email" required autocomplete="email" />
+        </label>
+        <label>Password
+          <input name="password" type="password" required minlength="6" autocomplete="current-password" />
+        </label>
+        <button type="submit" id="authSubmit">Log in</button>
+        <button type="button" class="link" id="forgotBtn">Forgot password?</button>
+      </form>
+    </div>
+
+    <div id="profileView" hidden>
+      <h2>Your profile</h2>
+      <p class="muted small" id="profileEmail"></p>
+      <form id="profileForm" class="account-form">
+        <label>Display name
+          <input name="name" maxlength="40" autocomplete="nickname" />
+        </label>
+        <label>Open the site on
+          <select name="view">
+            <option value="below">At/below WMA</option>
+            <option value="sweetspot">Sweetspot</option>
+            <option value="top">S&amp;P Top 20</option>
+            <option value="extended">Extended</option>
+          </select>
+        </label>
+        <label>New password <span class="muted small">(leave blank to keep yours)</span>
+          <input name="password" type="password" minlength="6" autocomplete="new-password" />
+        </label>
+        <div class="saved-list">
+          <span class="muted small">Saved watchlist</span>
+          <div id="profileWatchlist" class="small"></div>
+        </div>
+        <button type="submit">Save profile</button>
+        <button type="button" class="ghost" id="logoutBtn">Log out</button>
+      </form>
+    </div>
+
+    <p class="account-msg small" id="accountMsg" role="status"></p>
+  </dialog>
 
   <footer class="footer">
     <div class="wrap">
