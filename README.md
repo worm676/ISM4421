@@ -9,6 +9,10 @@ FAU-themed market volume tracker with a beige theme. The page opens with up to 2
 
 Data comes from Yahoo Finance's public chart API (no API key) through a Netlify Function. Educational use only, not financial advice.
 
+## Company profile and analyst ratings
+
+Selecting a stock shows, in the same box as its name, an **About** section (what the company does, sector, industry, headquarters, employees, website) and **Analyst ratings**: the share of Wall Street analysts rating it Buy, Hold or Sell (out of 100%), the consensus, and the average 12-month price target. Data comes from Yahoo's quoteSummary through `GET /api/profile?symbol=XYZ` (cached 6 hours). That endpoint needs a Yahoo session cookie and crumb, which `netlify/lib/yahoo.mjs` fetches and reuses. Strong Buy counts as Buy and Strong Sell as Sell, and a tie leans to Hold. ETFs have no analyst ratings, so only the description shows.
+
 ## Market context, review and entry plan
 
 Every signal is compared with the overall market:
@@ -35,6 +39,7 @@ Edit `public/ecosystem/data.js` to change districts, buildings, agents and their
 public/                        static site (index.html, styles.css, app.js, auth.js, vendored Chart.js and Supabase)
 netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarizes Yahoo data
 netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
+netlify/functions/profile.mjs  GET /api/profile?symbol=XYZ, company description + analyst consensus (cached 6 h)
 netlify/functions/screen.mjs   GET /api/screen, screens all S&P 500 stocks vs the 200 WMA (cached 15 min)
 netlify/lib/sp500.mjs          full S&P 500 constituent list (refresh when the index changes)
 netlify/lib/top20.mjs          top 20 ticker list (edit when rankings shift)

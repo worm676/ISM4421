@@ -64,6 +64,7 @@ async function load(symbol) {
   try {
     state.data = await fetchMarket(symbol);
     renderHero();
+    loadProfile(symbol);
     renderTiles();
     renderVolChart();
     renderWmaChart();
@@ -76,6 +77,66 @@ async function load(symbol) {
     document.querySelector("main").classList.remove("loading");
   }
 }
+
+// ---------- company profile + analyst consensus ----------
+const profileCache = new Map();
+async function loadProfile(symbol) {
+  $("about-name").textContent = symbol;
+  $("about-facts").textContent = "";
+  $("about-text").textContent = "Loading company profile…";
+  $("about-more").hidden = true;
+  $("ratings").hidden = true;
+  let p = profileCache.get(symbol);
+  if (!p) {
+    try {
+      const res = await fetch(`/api/profile?symbol=${encodeURIComponent(symbol)}`);
+      p = await res.json();
+      if (!res.ok || p.error) throw new Error(p.error || `HTTP ${res.status}`);
+      profileCache.set(symbol, p);
+    } catch {
+      p = { error: true };
+    }
+  }
+  if (state.data?.symbol !== symbol) return; // user picked another stock meanwhile
+  renderProfile(symbol, p);
+}
+
+function renderProfile(symbol, p) {
+  const pr = p.profile;
+  $("about-name").textContent = p.name || state.data?.name || symbol;
+  if (!pr) {
+    $("about-text").textContent = p.error ? "Company profile is unavailable right now." : "No company description is available for this ticker.";
+  } else {
+    const facts = [
+      [pr.sector, pr.industry].filter(Boolean).join(" · "),
+      pr.headquarters,
+      pr.employees ? `${pr.employees.toLocaleString()} employees` : "",
+    ].filter(Boolean);
+    $("about-facts").innerHTML = facts.map((f) => `<span>${f.replace(/</g, "&lt;")}</span>`).join("") +
+      (pr.website && /^https?:\/\//.test(pr.website) ? `<a href="${pr.website.replace(/"/g, "")}" target="_blank" rel="noopener">${pr.website.replace(/^https?:\/\/(www\.)?/, "").replace(/</g, "")} ↗</a>` : "");
+    $("about-text").textContent = pr.summary;
+    $("about-text").classList.add("clamped");
+    $("about-more").textContent = "Read more";
+    $("about-more").hidden = pr.summary.length < 320;
+  }
+  const c = p.consensus;
+  $("ratings").hidden = !c;
+  if (!c) return;
+  for (const k of ["buy", "hold", "sell"]) {
+    $(`r-${k}`).textContent = `${c[k]}%`;
+    $(`r-${k}-bar`).style.width = `${c[k]}%`;
+  }
+  $("r-verdict").textContent = `Consensus: ${c.verdict}`;
+  $("r-verdict").dataset.verdict = c.verdict.toLowerCase();
+  const target = c.targetMean != null && state.data?.price
+    ? ` Average 12-month price target ${fmtMoney(c.targetMean, state.data.currency)} (${fmtPct(((c.targetMean - state.data.price) / state.data.price) * 100)} from today${c.targetLow != null && c.targetHigh != null ? `; range ${fmtMoney(c.targetLow, state.data.currency)}–${fmtMoney(c.targetHigh, state.data.currency)}` : ""}).`
+    : "";
+  $("r-note").textContent = `Based on ${c.analysts} Wall Street analyst rating${c.analysts === 1 ? "" : "s"} this month.${target} Analyst views are opinions, not guarantees.`;
+}
+$("about-more").addEventListener("click", () => {
+  const clamped = $("about-text").classList.toggle("clamped");
+  $("about-more").textContent = clamped ? "Read more" : "Show less";
+});
 
 function renderHero() {
   const d = state.data;
