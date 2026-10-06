@@ -40,7 +40,7 @@
     const f = $("profileForm");
     $("profileEmail").textContent = `Signed in as ${user.email}`;
     f.name.value = profile?.display_name ?? "";
-    f.view.value = profile?.default_view ?? "below";
+    f.view.value = profile?.default_view ?? "crypto";
     const list = profile?.watchlist ?? [];
     $("profileWatchlist").textContent = list.length ? list.join(", ") : "Add tickers to the Owl Scanner and they save here.";
   }
@@ -57,7 +57,7 @@
         id: user.id,
         display_name: user.user_metadata?.display_name || user.email.split("@")[0],
         watchlist: window.owl?.getWatchlist() ?? [],
-        default_view: window.owl?.getView() ?? "below",
+        default_view: window.owl?.getView() ?? "crypto",
       };
       const { data: created, error: err } = await sb.from("profiles").insert(fresh).select().single();
       if (err) return say(`Could not create your profile: ${err.message}`, "error");

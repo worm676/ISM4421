@@ -73,26 +73,28 @@ export function screenRow(symbol, name, entry, market = null) {
   };
 }
 
-// Sweetspot: at the 200 WMA (within 1% above) down to 7% below it.
-export const SWEETSPOT = { min: -7, max: 1 };
+// Sweetspot: within 6% of the 200 WMA, above or below it.
+export const SWEETSPOT = { min: -6, max: 6 };
 
 // Split screener rows into the lists the home page shows, capped at `limit`.
-// At/below: deepest discount to the 200 WMA first. Extended: furthest above first.
+// Extended: furthest above first.
 export function screenLists(rows, limit = 20) {
   const ok = rows.filter((r) => r.signal?.distancePct != null);
-  const below = ok.filter((r) => r.signal.distancePct <= 0).sort((a, b) => a.signal.distancePct - b.signal.distancePct);
   const extended = ok.filter((r) => r.signal.level === "extended").sort((a, b) => b.signal.distancePct - a.signal.distancePct);
-  // Sweetspot: good buy setups first, then stocks turning up this week, then closest to the WMA.
-  const good = (r) => r.signal.setup?.key === "good";
-  const sweetspot = ok
-    .filter((r) => r.signal.distancePct >= SWEETSPOT.min && r.signal.distancePct <= SWEETSPOT.max)
-    .sort((a, b) => good(b) - good(a) || (b.turningUp === true) - (a.turningUp === true) || Math.abs(a.signal.distancePct) - Math.abs(b.signal.distancePct));
+  const sweetspot = sweetspotList(ok);
   return {
-    below: below.slice(0, limit),
     sweetspot: sweetspot.slice(0, limit),
     extended: extended.slice(0, limit),
-    counts: { below: below.length, sweetspot: sweetspot.length, extended: extended.length, screened: ok.length },
+    counts: { sweetspot: sweetspot.length, extended: extended.length, screened: ok.length },
   };
+}
+
+// Sweetspot: good buy setups first, then those turning up this week, then closest to the WMA.
+export function sweetspotList(rows) {
+  const good = (r) => r.signal.setup?.key === "good";
+  return rows
+    .filter((r) => r.signal?.distancePct != null && r.signal.distancePct >= SWEETSPOT.min && r.signal.distancePct <= SWEETSPOT.max)
+    .sort((a, b) => good(b) - good(a) || (b.turningUp === true) - (a.turningUp === true) || Math.abs(a.signal.distancePct) - Math.abs(b.signal.distancePct));
 }
 
 // Direction of the 200 WMA itself: compare it now with `lookback` weeks ago.
@@ -115,11 +117,11 @@ export function weeklyVolatility(closes, n = 52) {
 }
 
 // Long-term phase of the overall market from the S&P 500's own 200 WMA.
-export function marketRegime(closes, price = closes.at(-1)) {
+export function marketRegime(closes, price = closes.at(-1), symbol = "^GSPC", name = "S&P 500") {
   const wma = wma200(closes.map((close, i) => ({ t: i, close, volume: 0 }))).value;
   if (wma == null || price == null) return null;
   const distancePct = ((price - wma) / wma) * 100;
-  return { symbol: "^GSPC", name: "S&P 500", price, wma200: wma, distancePct, bull: price >= wma, trend: wmaTrend(closes) };
+  return { symbol, name, price, wma200: wma, distancePct, bull: price >= wma, trend: wmaTrend(closes) };
 }
 
 // Staged entry plan around the 200 WMA: thirds at +5%, at the WMA and at -5%,
@@ -224,9 +226,10 @@ export function analystConsensus(trend, financialData = {}) {
 
 // Company profile fields from Yahoo's assetProfile module.
 export function companyProfile(asset) {
-  if (!asset?.longBusinessSummary) return null;
+  const summary = asset?.longBusinessSummary || asset?.description; // crypto uses `description`
+  if (!summary) return null;
   return {
-    summary: asset.longBusinessSummary,
+    summary,
     sector: asset.sector ?? null,
     industry: asset.industry ?? null,
     website: asset.website ?? null,

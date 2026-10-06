@@ -67,3 +67,7 @@ test("profile handler gets a Yahoo session, then retries once on a stale crumb",
     _resetYahooSession();
   }
 });
+
+test("companyProfile reads crypto descriptions too", () => {
+  assert.equal(companyProfile({ description: "Bitcoin (BTC) is a cryptocurrency launched in 2010." }).summary, "Bitcoin (BTC) is a cryptocurrency launched in 2010.");
+});
