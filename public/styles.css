@@ -286,3 +286,12 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .bar i.buy { background: #0a7d3b; } .bar i.hold { background: #b26a00; } .bar i.sell { background: var(--fau-red); }
 .ratings p { margin: 8px 0 0; }
 .hero-extra { display: grid; gap: 18px; align-content: start; }
+
+/* Recent partnerships (inside About) */
+.partners { margin-top: 12px; }
+.partners h5 { margin: 0 0 6px; font-size: 13.5px; }
+.partner-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.partner-list li { display: grid; gap: 1px; font-size: 13.5px; line-height: 1.4; }
+.partner-list a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 2px; }
+.partner-list a:hover { text-decoration-color: currentColor; }
+.partners p { margin: 6px 0 0; }

@@ -43,11 +43,15 @@ test("profile handler gets a Yahoo session, then retries once on a stale crumb",
     calls.push(u.split("?")[0]);
     if (u.startsWith("https://fc.yahoo.com")) return new Response("", { status: 404, headers: { "set-cookie": "A3=abc; Domain=.yahoo.com; Path=/" } });
     if (u.includes("getcrumb")) return new Response("crumb123");
+    if (u.startsWith("https://news.google.com/")) {
+      assert.ok(decodeURIComponent(u).includes('"Apple"'));
+      return new Response(`<rss><item><title>Klarna shares surge 9% on Apple device leasing partnership - Yahoo Finance</title><link>https://news.google.com/a</link><pubDate>Tue, 21 Jul 2026 10:00:00 GMT</pubDate><source url="x">Yahoo Finance</source></item></rss>`);
+    }
     assert.equal(opts.headers.Cookie, "A3=abc");
     assert.ok(u.includes("crumb=crumb123"));
     if (++summaryCalls === 1) return new Response(JSON.stringify({ finance: { error: { description: "Invalid Crumb" } } }), { status: 401 });
     return new Response(JSON.stringify({ quoteSummary: { result: [{
-      price: { longName: "Apple Inc." },
+      price: { longName: "Apple Inc.", marketCap: { raw: 4869056364544 } },
       assetProfile: { longBusinessSummary: "Apple designs phones.", sector: "Technology" },
       recommendationTrend: trend({ strongBuy: 6, buy: 19, hold: 13, sell: 3, strongSell: 3 }),
       financialData: { targetMeanPrice: { raw: 328 } },
@@ -60,6 +64,9 @@ test("profile handler gets a Yahoo session, then retries once on a stale crumb",
     assert.equal(d.name, "Apple Inc.");
     assert.equal(d.profile.summary, "Apple designs phones.");
     assert.equal(d.consensus.buy, 57);
+    assert.equal(d.marketCap, 4869056364544);
+    assert.equal(d.partnerships.length, 1);
+    assert.equal(d.partnerships[0].title, "Klarna shares surge 9% on Apple device leasing partnership");
     assert.equal(calls.filter((c) => c.includes("getcrumb")).length, 2); // refreshed once after the 401
     assert.equal((await handler(new Request("https://x/api/profile?symbol=<x>"))).status, 400);
   } finally {

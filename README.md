@@ -11,7 +11,7 @@ Data comes from Yahoo Finance's public chart API (no API key) through a Netlify 
 
 ## Company profile and analyst ratings
 
-Selecting a stock shows, in the same box as its name, an **About** section (what the company does, sector, industry, headquarters, employees, website) and **Analyst ratings**: the share of Wall Street analysts rating it Buy, Hold or Sell (out of 100%), the consensus, and the average 12-month price target. Data comes from Yahoo's quoteSummary through `GET /api/profile?symbol=XYZ` (cached 6 hours). That endpoint needs a Yahoo session cookie and crumb, which `netlify/lib/yahoo.mjs` fetches and reuses. Strong Buy counts as Buy and Strong Sell as Sell, and a tie leans to Hold. ETFs have no analyst ratings, so only the description shows.
+Selecting a stock shows, in the same box as its name, an **About** section (what the company or coin does, market cap, sector, industry, headquarters, employees, website, and up to 5 **recent partnerships**: deal headlines from Google News in the last 6 months, de-duplicated, each linking to the article) and **Analyst ratings**: the share of Wall Street analysts rating it Buy, Hold or Sell (out of 100%), the consensus, and the average 12-month price target. Data comes from Yahoo's quoteSummary through `GET /api/profile?symbol=XYZ` (cached 6 hours). That endpoint needs a Yahoo session cookie and crumb, which `netlify/lib/yahoo.mjs` fetches and reuses. Strong Buy counts as Buy and Strong Sell as Sell, and a tie leans to Hold. ETFs have no analyst ratings, so only the description shows.
 
 ## Market context, review and entry plan
 
