@@ -414,7 +414,7 @@ async function scan() {
 const VIEW_KEY = "owl-top-view";
 const VIEWS = {
   below: { title: "At or below the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is at or below its 200-week moving average right now." },
-  sweetspot: { title: "Sweetspot: at the 200 WMA to 7% below", url: "/api/screen", empty: "No S&P 500 stock is in the sweetspot right now." },
+  sweetspot: { title: "Sweetspot: within 6% of the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is in the sweetspot right now." },
   top: { title: "S&P 500 Top 20", url: "/api/top" },
   extended: { title: "Extended: more than 30% above the 200 WMA", url: "/api/screen", empty: "No S&P 500 stock is extended right now." },
 };

@@ -73,8 +73,8 @@ export function screenRow(symbol, name, entry, market = null) {
   };
 }
 
-// Sweetspot: at the 200 WMA (within 1% above) down to 7% below it.
-export const SWEETSPOT = { min: -7, max: 1 };
+// Sweetspot: within 6% of the 200 WMA, above or below it.
+export const SWEETSPOT = { min: -6, max: 6 };
 
 // Split screener rows into the lists the home page shows, capped at `limit`.
 // At/below: deepest discount to the 200 WMA first. Extended: furthest above first.
