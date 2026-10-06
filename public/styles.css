@@ -121,7 +121,7 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .signal-label { font-family: Oswald, sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; }
 .signal-dist { font-size: 14px; opacity: .92; }
 .signal-detail { margin: 10px 0; font-size: 14px; }
-.wma-facts { display: flex; gap: 24px; }
+.wma-facts { display: flex; gap: 12px 24px; flex-wrap: wrap; }
 .wma-facts div { display: flex; flex-direction: column; }
 .wma-facts strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 
@@ -220,3 +220,43 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 @media (max-width: 380px) {
   #viewTabs { display: grid; grid-template-columns: 1fr 1fr; }
 }
+
+/* Market phase banner */
+.market-banner { margin-top: 16px; padding: 10px 14px; border-radius: 10px; font-size: 14px; border: 1px solid var(--border); border-left-width: 5px; background: var(--card); }
+.market-banner[data-phase="bull"] { border-left-color: #0a7d3b; }
+.market-banner[data-phase="bear"] { border-left-color: var(--fau-red); }
+
+/* Setup tags (signal + market + trend) */
+.setup-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.top-card .setup-tag { align-self: flex-start; }
+.scanner .setup-tag { margin-left: 4px; }
+[data-setup="good"] { color: #0a7d3b; }
+[data-setup="selective"] { color: #b26a00; }
+[data-setup="breakdown"] { color: var(--fau-red); }
+[data-setup="wait"] { color: var(--muted); }
+@media (prefers-color-scheme: dark) {
+  [data-setup="good"] { color: #5fd38d; }
+  [data-setup="selective"] { color: #f0b04a; }
+  [data-setup="breakdown"] { color: #ff7a7a; }
+}
+.setup { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid currentColor; display: grid; gap: 2px; font-size: 13.5px; }
+.setup span { color: var(--text); }
+
+/* Review & entry plan */
+.plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.plan h4 { margin: 0 0 10px; font-size: 15px; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
+.checklist label, .checklist li.auto { display: flex; gap: 8px; align-items: flex-start; }
+.checklist input { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+.checklist a { color: var(--fau-blue-2); white-space: nowrap; }
+.check { width: 16px; flex: none; text-align: center; font-weight: 800; }
+.check.ok { color: #0a7d3b; } .check.bad { color: var(--fau-red); } .check.warn { color: #b26a00; }
+.trigger-on { color: #0a7d3b; font-weight: 700; }
+.risk-inputs { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.risk-inputs label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; flex: 1 1 130px; }
+.risk-inputs input { font: 15px Inter, sans-serif; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; }
+.plan-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.plan-table th, .plan-table td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+.plan-table th { font-size: 12px; color: var(--muted); font-weight: 600; }
+.plan-table tr.stop td { color: var(--fau-red); font-weight: 600; }
+@media (max-width: 900px) { .plan-grid { grid-template-columns: 1fr; } }

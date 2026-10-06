@@ -1,6 +1,6 @@
 # Owl Volume Tracker (FAU)
 
-FAU-themed market volume tracker with a beige theme. The page opens with up to 20 stocks, and a toggle picks which list: **At/below WMA** (default: S&P 500 stocks at or below their 200-week moving average, deepest discount first), **Sweetspot** (stocks at the 200 WMA, up to 1% above, down to 7% below it; ones trading above last week's close are flagged "Turning up" and listed first), **S&P Top 20** (the 20 largest companies by index weight) or **Extended** (S&P 500 stocks more than 30% above their 200 WMA, most extended first). The choice is remembered in the browser. Click any card to drill in. For any ticker it shows:
+FAU-themed market volume tracker with a beige theme. The page opens with up to 20 stocks, and a toggle picks which list: **At/below WMA** (default: S&P 500 stocks at or below their 200-week moving average, deepest discount first), **Sweetspot** (stocks at the 200 WMA, up to 1% above, down to 7% below it; good buy setups first, then ones trading above last week's close, flagged "Turning up"), **S&P Top 20** (the 20 largest companies by index weight) or **Extended** (S&P 500 stocks more than 30% above their 200 WMA, most extended first). The choice is remembered in the browser. Click any card to drill in. For any ticker it shows:
 
 - **Volume by hour, day, week and month.** Each timeframe shows the last completed period, the current period so far, the average, and relative volume (RVOL).
 - **200-week moving average (200 WMA)** charted against weekly closes, with a +10% buy-zone band.
@@ -8,6 +8,14 @@ FAU-themed market volume tracker with a beige theme. The page opens with up to 2
 - **Owl Scanner.** A watchlist ranked by distance to the 200 WMA, so the best opportunities sit at the top. The watchlist is saved in the browser.
 
 Data comes from Yahoo Finance's public chart API (no API key) through a Netlify Function. Educational use only, not financial advice.
+
+## Market context, review and entry plan
+
+Every signal is compared with the overall market:
+
+- **Market phase.** The S&P 500 (`^GSPC`) is checked against its own 200 WMA. Above it means a long-term bull phase, and a banner says pullbacks in quality stocks are more attractive. Below it means be selective and defensive.
+- **Setup tags.** Each signal gets a tag that combines the market phase with the stock's own 200 WMA direction (rising or falling over 13 weeks): *Good buy setup* (within 10% below to 5% above a rising WMA in a bull market), *Be selective* (same zone, bear market), *Breakdown risk* (the stock's WMA is falling), *Wait for pullback* (5–10% above: don't chase).
+- **Review & entry plan** (on each stock). The review is triggered when price is within 5% of the 200 WMA. Checklist: fundamentals and valuation (manual, with links to Yahoo financials and key statistics; Yahoo doesn't serve those to the site without a login), plus technical context and market phase filled in automatically. The plan stages thirds at +5%, at, and −5% of the 200 WMA, with a stop under the last third at 2× the stock's typical weekly move (3% minimum, 15% maximum), and sizes shares from the user's account size and risk per trade (saved in the browser).
 
 ## Accounts (log in and profile)
 

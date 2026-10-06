@@ -52,7 +52,7 @@ export function wma200(weeklyBars, period = 200) {
 }
 
 // One screener row from a Yahoo spark entry (weekly closes, no volume).
-export function screenRow(symbol, name, entry) {
+export function screenRow(symbol, name, entry, market = null) {
   const closes = (entry?.close ?? []).filter((c) => c != null);
   const price = entry?.fulldayPrice ?? closes.at(-1) ?? null;
   const wma = wma200(closes.map((close, i) => ({ t: i, close, volume: 0 }))).value;
@@ -69,7 +69,7 @@ export function screenRow(symbol, name, entry) {
     changePct: entry?.fulldayChangePercent ?? null,
     wma200: wma,
     turningUp: price != null && prevWeekClose != null && price > prevWeekClose,
-    signal: buySignal(price, wma, null),
+    signal: buySignal(price, wma, null, { marketBull: market?.bull ?? null, wmaRising: wmaTrend(closes).rising }),
   };
 }
 
@@ -82,10 +82,11 @@ export function screenLists(rows, limit = 20) {
   const ok = rows.filter((r) => r.signal?.distancePct != null);
   const below = ok.filter((r) => r.signal.distancePct <= 0).sort((a, b) => a.signal.distancePct - b.signal.distancePct);
   const extended = ok.filter((r) => r.signal.level === "extended").sort((a, b) => b.signal.distancePct - a.signal.distancePct);
-  // Sweetspot: stocks turning up this week first, then closest to the WMA.
+  // Sweetspot: good buy setups first, then stocks turning up this week, then closest to the WMA.
+  const good = (r) => r.signal.setup?.key === "good";
   const sweetspot = ok
     .filter((r) => r.signal.distancePct >= SWEETSPOT.min && r.signal.distancePct <= SWEETSPOT.max)
-    .sort((a, b) => (b.turningUp === true) - (a.turningUp === true) || Math.abs(a.signal.distancePct) - Math.abs(b.signal.distancePct));
+    .sort((a, b) => good(b) - good(a) || (b.turningUp === true) - (a.turningUp === true) || Math.abs(a.signal.distancePct) - Math.abs(b.signal.distancePct));
   return {
     below: below.slice(0, limit),
     sweetspot: sweetspot.slice(0, limit),
@@ -94,8 +95,66 @@ export function screenLists(rows, limit = 20) {
   };
 }
 
+// Direction of the 200 WMA itself: compare it now with `lookback` weeks ago.
+// Rising means a pullback to it is a pullback in an uptrend; falling means a breakdown.
+export function wmaTrend(closes, lookback = 13) {
+  const line = wma200(closes.map((close, i) => ({ t: i, close, volume: 0 }))).line;
+  const now = line.at(-1)?.wma ?? null;
+  const then = line.at(-1 - lookback)?.wma ?? null;
+  if (now == null || then == null) return { rising: null, slopePct: null };
+  const slopePct = ((now - then) / then) * 100;
+  return { rising: slopePct > 0, slopePct };
+}
+
+// Typical weekly move: average absolute weekly % change over the last `n` weeks.
+export function weeklyVolatility(closes, n = 52) {
+  const c = closes.slice(-(n + 1));
+  const moves = [];
+  for (let i = 1; i < c.length; i++) if (c[i - 1]) moves.push(Math.abs(c[i] / c[i - 1] - 1) * 100);
+  return avg(moves);
+}
+
+// Long-term phase of the overall market from the S&P 500's own 200 WMA.
+export function marketRegime(closes, price = closes.at(-1)) {
+  const wma = wma200(closes.map((close, i) => ({ t: i, close, volume: 0 }))).value;
+  if (wma == null || price == null) return null;
+  const distancePct = ((price - wma) / wma) * 100;
+  return { symbol: "^GSPC", name: "S&P 500", price, wma200: wma, distancePct, bull: price >= wma, trend: wmaTrend(closes) };
+}
+
+// Staged entry plan around the 200 WMA: thirds at +5%, at the WMA and at -5%,
+// with a stop below the last tranche set by the stock's typical weekly move.
+export function entryPlan(wma, weeklyVolPct) {
+  if (wma == null || weeklyVolPct == null) return null;
+  const tranches = [1.05, 1, 0.95].map((k) => wma * k);
+  const cushion = Math.min(Math.max(2 * weeklyVolPct, 3), 15); // 3%..15% below the last tranche
+  const stop = tranches[2] * (1 - cushion / 100);
+  return { tranches, stop, weeklyVolPct, cushionPct: cushion };
+}
+
+// How the signal fits the bigger picture (market phase + the stock's own WMA trend).
+// ctx: { marketBull: true|false|null, wmaRising: true|false|null }
+export function setupFor(distancePct, { marketBull = null, wmaRising = null } = {}) {
+  if (distancePct == null) return null;
+  const near = distancePct >= -10 && distancePct <= 5;
+  if (near && wmaRising === false) {
+    return { key: "breakdown", label: "Breakdown risk", detail: "The 200 WMA itself is falling, so this is a breakdown in a downtrend rather than a pullback in an uptrend. Wait for the trend to turn." };
+  }
+  if (near && marketBull === false) {
+    return { key: "selective", label: "Be selective", detail: "The S&P 500 is below its own 200 WMA, a long-term bear phase. Be selective and defensive: only the strongest businesses, smaller and slower entries." };
+  }
+  if (near && marketBull && wmaRising) {
+    return { key: "good", label: "Good buy setup", detail: "A pullback to the 200 WMA in an uptrend, while the S&P 500 is above its own 200 WMA. Review the fundamentals and valuation before entering." };
+  }
+  if (distancePct > 5 && distancePct <= 10) {
+    return { key: "wait", label: "Wait for pullback", detail: "Close, but avoid chasing. Wait for price to come within 5% of the 200 WMA." };
+  }
+  return null;
+}
+
 // Buy signal from price distance to the 200 WMA, confirmed by daily volume.
-export function buySignal(price, wma, dailyRvol) {
+// ctx (optional) adds the market phase and WMA trend as `setup`.
+export function buySignal(price, wma, dailyRvol, ctx) {
   if (wma == null || price == null) {
     return { level: "na", label: "Not enough history", detail: "Fewer than 200 weeks of data." };
   }
@@ -130,5 +189,5 @@ export function buySignal(price, wma, dailyRvol) {
   if (volumeConfirmed && (level === "strong" || level === "buy")) {
     detail += " Volume confirms it: the last session traded at least 1.5× its average volume.";
   }
-  return { level, label, detail, distancePct, volumeConfirmed };
+  return { level, label, detail, distancePct, volumeConfirmed, setup: setupFor(distancePct, ctx) };
 }
