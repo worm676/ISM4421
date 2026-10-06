@@ -24,12 +24,10 @@ test("screenLists caps at 20 and sorts each list", () => {
     screenRow("N", "n", { close: [] }),
   ];
   const l = screenLists(rows, 20);
-  assert.equal(l.below.length, 20);
   assert.equal(l.extended.length, 20);
-  assert.deepEqual(l.counts, { below: 25, sweetspot: 6, extended: 22, screened: 48 });
-  assert.equal(l.below[0].symbol, "B24"); // deepest below first
+  assert.deepEqual(l.counts, { sweetspot: 6, extended: 22, screened: 48 });
+  assert.ok(!("below" in l)); // At/below list was replaced by Crypto Sweetspot
   assert.equal(l.extended[0].symbol, "E21"); // most extended first
-  assert.ok(l.below.every((r) => r.signal.distancePct <= 0));
   assert.ok(l.extended.every((r) => r.signal.level === "extended"));
 });
 
@@ -48,7 +46,7 @@ test("screen handler batches every S&P 500 symbol", async () => {
     const d = await res.json();
     assert.equal(new Set(seen).size, SP500.length);
     assert.equal(d.counts.screened, SP500.length);
-    assert.equal(d.below.length, 20);
+    assert.ok(Array.isArray(d.sweetspot)); // mock prices sit outside the ±6% band
     assert.equal(d.extended.length, 20);
   } finally {
     globalThis.fetch = orig;

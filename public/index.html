@@ -45,11 +45,11 @@
     <section class="top20">
       <div class="card-head">
         <div>
-          <h2 class="section-title" id="top-title">At or below the 200 WMA</h2>
+          <h2 class="section-title" id="top-title">Crypto Sweetspot: within 6% of the 200 WMA</h2>
           <span class="muted small" id="top-meta">Screening the S&amp;P 500…</span>
         </div>
         <div class="tabs" role="tablist" id="viewTabs" aria-label="Choose which stocks to show">
-          <button role="tab" data-view="below" aria-selected="true">At/below WMA</button>
+          <button role="tab" data-view="crypto" aria-selected="true">Crypto Sweetspot</button>
           <button role="tab" data-view="sweetspot" aria-selected="false">Sweetspot</button>
           <button role="tab" data-view="top" aria-selected="false">S&amp;P Top 20</button>
           <button role="tab" data-view="extended" aria-selected="false">Extended</button>
@@ -133,7 +133,7 @@
           </div>
           <div class="table-scroll">
             <table class="plan-table">
-              <thead><tr><th>Staged entry</th><th>Price</th><th>Shares</th></tr></thead>
+              <thead><tr><th>Staged entry</th><th>Price</th><th id="plan-unit">Shares</th></tr></thead>
               <tbody id="planBody"></tbody>
             </table>
           </div>
@@ -197,6 +197,7 @@
         <li><span class="pill" data-level="strong">STRONG BUY</span>: price is at the 200 WMA or up to 10% below it.</li>
         <li><span class="pill" data-level="buy">BUY ZONE</span>: price is 0–10% above the 200 WMA.</li>
         <li><span class="pill" data-level="watch">WATCH</span>: price is 10–30% above. <span class="pill" data-level="extended">EXTENDED</span>: price is more than 30% above.</li>
+        <li><strong>Crypto Sweetspot</strong> runs the same process on major cryptocurrencies (those with 200+ weeks of history): coins within 6% of their own 200 WMA. For crypto, Bitcoin's position versus its 200 WMA stands in for the S&amp;P 500 as the market check.</li>
         <li><strong>Sweetspot</strong> lists stocks within 6% of the 200 WMA, either above or below it, where a bounce off long-term support is most likely. Good buy setups are listed first, then stocks marked <strong>↑ Turning up</strong> (trading above last week's close).</li>
         <li><strong>Market phase:</strong> when the S&amp;P 500 is above its own 200 WMA the market is in a long-term bull phase, and pullbacks in quality stocks are more attractive. When it is below, be more selective and defensive.</li>
         <li><strong>Setups</strong> combine the signal with the market and the stock's own trend. <span class="setup-tag" data-setup="good">Good buy setup</span> price is within 10% below to 5% above a rising 200 WMA while the market is in a bull phase. <span class="setup-tag" data-setup="selective">Be selective</span> the same zone, but the market is in a bear phase. <span class="setup-tag" data-setup="breakdown">Breakdown risk</span> the stock's 200 WMA is falling, so it's a breakdown in a downtrend, not a pullback. <span class="setup-tag" data-setup="wait">Wait for pullback</span> 5–10% above the WMA: don't chase.</li>
@@ -241,7 +242,7 @@
         </label>
         <label>Open the site on
           <select name="view">
-            <option value="below">At/below WMA</option>
+            <option value="crypto">Crypto Sweetspot</option>
             <option value="sweetspot">Sweetspot</option>
             <option value="top">S&amp;P Top 20</option>
             <option value="extended">Extended</option>

@@ -1,6 +1,6 @@
 # Owl Volume Tracker (FAU)
 
-FAU-themed market volume tracker with a beige theme. The page opens with up to 20 stocks, and a toggle picks which list: **At/below WMA** (default: S&P 500 stocks at or below their 200-week moving average, deepest discount first), **Sweetspot** (stocks within 6% of the 200 WMA, above or below it; good buy setups first, then ones trading above last week's close, flagged "Turning up"), **S&P Top 20** (the 20 largest companies by index weight) or **Extended** (S&P 500 stocks more than 30% above their 200 WMA, most extended first). The choice is remembered in the browser. Click any card to drill in. For any ticker it shows:
+FAU-themed market volume tracker with a beige theme. The page opens with up to 20 stocks, and a toggle picks which list: **Crypto Sweetspot** (default: major cryptocurrencies within 6% of their own 200-week moving average, with Bitcoin's 200 WMA as the crypto market check), **Sweetspot** (stocks within 6% of the 200 WMA, above or below it; good buy setups first, then ones trading above last week's close, flagged "Turning up"), **S&P Top 20** (the 20 largest companies by index weight) or **Extended** (S&P 500 stocks more than 30% above their 200 WMA, most extended first). The choice is remembered in the browser. Click any card to drill in. For any ticker it shows:
 
 - **Volume by hour, day, week and month.** Each timeframe shows the last completed period, the current period so far, the average, and relative volume (RVOL).
 - **200-week moving average (200 WMA)** charted against weekly closes, with a +10% buy-zone band.
@@ -40,6 +40,7 @@ public/                        static site (index.html, styles.css, app.js, auth
 netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarizes Yahoo data
 netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
 netlify/functions/profile.mjs  GET /api/profile?symbol=XYZ, company description + analyst consensus (cached 6 h)
+netlify/functions/crypto.mjs   GET /api/crypto, Crypto Sweetspot over the coins in netlify/lib/crypto.mjs (cached 15 min)
 netlify/functions/screen.mjs   GET /api/screen, screens all S&P 500 stocks vs the 200 WMA (cached 15 min)
 netlify/lib/sp500.mjs          full S&P 500 constituent list (refresh when the index changes)
 netlify/lib/top20.mjs          top 20 ticker list (edit when rankings shift)

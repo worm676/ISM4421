@@ -103,3 +103,39 @@ test("market handler returns market phase, trend, setup and entry plan", async (
     _resetMarketCache();
   }
 });
+
+test("crypto endpoint screens coins against their 200 WMA with Bitcoin as the market", async () => {
+  const { default: crypto } = await import("../netlify/functions/crypto.mjs");
+  const { CRYPTO } = await import("../netlify/lib/crypto.mjs");
+  const orig = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url) => {
+    const syms = new URL(url).searchParams.get("symbols").split(",");
+    assert.ok(syms.length <= 20);
+    seen.push(...syms);
+    // BTC well above its WMA (bull); other coins alternate 3% below / 20% above a flat WMA.
+    return new Response(JSON.stringify(Object.fromEntries(syms.map((s, i) => {
+      const closes = s === "BTC-USD" ? rising : [...Array(259).fill(100), i % 2 ? 97 : 120];
+      return [s, { close: closes, timestamp: closes.map((_, k) => 1.6e9 + k * 604800), fulldayPrice: closes.at(-1) }];
+    }))));
+  };
+  try {
+    const d = await (await crypto()).json();
+    assert.equal(new Set(seen).size, CRYPTO.length);
+    assert.equal(d.market.name, "Bitcoin");
+    assert.equal(d.market.bull, true);
+    assert.ok(d.crypto.length > 0 && d.crypto.length <= 20);
+    assert.ok(d.crypto.every((r) => r.signal.distancePct >= -6 && r.signal.distancePct <= 6));
+    assert.equal(d.counts.screened, CRYPTO.length);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("isCrypto tells -USD pairs from stock tickers", async () => {
+  const { isCrypto } = await import("../netlify/lib/market.mjs");
+  assert.equal(isCrypto("BTC-USD"), true);
+  assert.equal(isCrypto("UNI7083-USD"), true);
+  assert.equal(isCrypto("BRK-B"), false);
+  assert.equal(isCrypto("AAPL"), false);
+});
