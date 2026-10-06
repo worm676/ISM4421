@@ -191,3 +191,46 @@ export function buySignal(price, wma, dailyRvol, ctx) {
   }
   return { level, label, detail, distancePct, volumeConfirmed, setup: setupFor(distancePct, ctx) };
 }
+
+// Analyst consensus from Yahoo's recommendationTrend (current month), as
+// buy / hold / sell shares of 100% like a brokerage app shows.
+export function analystConsensus(trend, financialData = {}) {
+  const now = (trend?.trend ?? []).find((t) => t.period === "0m") ?? trend?.trend?.[0];
+  if (!now) return null;
+  const buy = (now.strongBuy ?? 0) + (now.buy ?? 0);
+  const hold = now.hold ?? 0;
+  const sell = (now.sell ?? 0) + (now.strongSell ?? 0);
+  const total = buy + hold + sell;
+  if (!total) return null;
+  // Round so the three always add up to exactly 100.
+  const raw = [buy, hold, sell].map((n) => (n / total) * 100);
+  const pct = raw.map(Math.floor);
+  let left = 100 - pct.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [r - Math.floor(r), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left-- > 0) pct[i]++; });
+  const [buyPct, holdPct, sellPct] = pct;
+  // Ties lean to Hold, the cautious reading.
+  const verdict = buyPct > holdPct && buyPct > sellPct ? "Buy" : sellPct > holdPct && sellPct > buyPct ? "Sell" : "Hold";
+  const num = (v) => (typeof v === "object" && v !== null ? v.raw : v) ?? null;
+  return {
+    analysts: total,
+    buy: buyPct, hold: holdPct, sell: sellPct,
+    counts: { strongBuy: now.strongBuy ?? 0, buy: now.buy ?? 0, hold, sell: now.sell ?? 0, strongSell: now.strongSell ?? 0 },
+    verdict,
+    targetMean: num(financialData?.targetMeanPrice),
+    targetLow: num(financialData?.targetLowPrice),
+    targetHigh: num(financialData?.targetHighPrice),
+  };
+}
+
+// Company profile fields from Yahoo's assetProfile module.
+export function companyProfile(asset) {
+  if (!asset?.longBusinessSummary) return null;
+  return {
+    summary: asset.longBusinessSummary,
+    sector: asset.sector ?? null,
+    industry: asset.industry ?? null,
+    website: asset.website ?? null,
+    employees: asset.fullTimeEmployees ?? null,
+    headquarters: [asset.city, asset.state, asset.country].filter(Boolean).join(", ") || null,
+  };
+}
