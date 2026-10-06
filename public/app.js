@@ -26,6 +26,8 @@ const fmtMoney = (n, cur = "USD") =>
     ...(Math.abs(n) > 0 && Math.abs(n) < 1 ? { maximumSignificantDigits: 4 } : { maximumFractionDigits: 2 }),
   }).format(n);
 const isCrypto = (symbol) => /-USD$/.test(symbol);
+// Market cap as $4.87T / $20.36B.
+const fmtCap = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(n);
 // Show coins as BTC or UNI rather than Yahoo's BTC-USD / UNI7083-USD.
 const tickerLabel = (symbol) => (isCrypto(symbol) ? symbol.replace(/\d*-USD$/, "") : symbol);
 // Share/coin counts: 1,250 or 0.0412, and 70.6M for cheap coins like SHIB.
@@ -96,6 +98,8 @@ async function loadProfile(symbol) {
   $("about-text").textContent = "Loading company profile…";
   $("about-more").hidden = true;
   $("ratings").hidden = true;
+  $("partners").hidden = true;
+  $("about-cap").hidden = true;
   let p = profileCache.get(symbol);
   if (!p) {
     try {
@@ -113,8 +117,15 @@ async function loadProfile(symbol) {
 
 function renderProfile(symbol, p) {
   const pr = p.profile;
+  // Total market cap leads the description: $4.87T, with the full dollar figure beside it.
+  $("about-cap").hidden = !p.marketCap;
+  if (p.marketCap) {
+    $("cap-value").textContent = fmtCap(p.marketCap);
+    $("cap-full").textContent = `($${Math.round(p.marketCap).toLocaleString("en-US")})`;
+  }
   $("about-name").textContent = p.name || state.data?.name || symbol;
   if (!pr) {
+    $("about-facts").textContent = "";
     $("about-text").textContent = p.error ? "Company profile is unavailable right now." : "No company description is available for this ticker.";
   } else {
     const facts = [
@@ -129,6 +140,7 @@ function renderProfile(symbol, p) {
     $("about-more").textContent = "Read more";
     $("about-more").hidden = pr.summary.length < 320;
   }
+  renderPartnerships(p);
   const c = p.consensus;
   $("ratings").hidden = !c;
   if (!c) return;
@@ -142,6 +154,18 @@ function renderProfile(symbol, p) {
     ? ` Average 12-month price target ${fmtMoney(c.targetMean, state.data.currency)} (${fmtPct(((c.targetMean - state.data.price) / state.data.price) * 100)} from today${c.targetLow != null && c.targetHigh != null ? `; range ${fmtMoney(c.targetLow, state.data.currency)}–${fmtMoney(c.targetHigh, state.data.currency)}` : ""}).`
     : "";
   $("r-note").textContent = `Based on ${c.analysts} Wall Street analyst rating${c.analysts === 1 ? "" : "s"} this month.${target} Analyst views are opinions, not guarantees.`;
+}
+function renderPartnerships(p) {
+  const list = p.partnerships ?? [];
+  $("partners").hidden = !!p.error;
+  $("partner-list").innerHTML = list.length
+    ? list.map((n) => {
+        const date = n.published ? new Date(n.published).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+        const safe = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+        const href = /^https:\/\//.test(n.link) ? safe(n.link) : "#";
+        return `<li><a href="${href}" target="_blank" rel="noopener">${safe(n.title)}</a><span class="small muted">${safe([n.source, date].filter(Boolean).join(" · "))}</span></li>`;
+      }).join("")
+    : `<li class="muted small">No partnership news in the last 6 months.</li>`;
 }
 $("about-more").addEventListener("click", () => {
   const clamped = $("about-text").classList.toggle("clamped");
