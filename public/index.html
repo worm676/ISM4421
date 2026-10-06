@@ -117,6 +117,25 @@
           <div class="rating-row"><span>Sell</span><div class="bar"><i class="sell" id="r-sell-bar"></i></div><strong id="r-sell">—</strong></div>
           <p class="small muted" id="r-note"></p>
         </div>
+
+        <div class="momo" id="momo" hidden>
+          <div class="ratings-head">
+            <h4>Momentum: RSI &amp; MACD</h4>
+            <span class="small muted" id="m-asof"></span>
+          </div>
+          <div class="ind">
+            <div class="ind-top"><strong>RSI (14-day)</strong><span class="ind-val" id="rsi-val">—</span><span class="chip" id="rsi-chip"></span></div>
+            <div class="rsi-meter" aria-hidden="true"><i id="rsi-dot"></i></div>
+            <div class="rsi-scale small muted" aria-hidden="true"><span>0</span><span>30</span><span>50</span><span>70</span><span>100</span></div>
+            <p class="small" id="rsi-detail"></p>
+          </div>
+          <div class="ind">
+            <div class="ind-top"><strong>MACD (12, 26, 9)</strong><span class="chip" id="macd-chip"></span></div>
+            <div class="macd-vals small" id="macd-vals"></div>
+            <p class="small" id="macd-detail"></p>
+          </div>
+          <div class="ind-summary" id="ind-summary"></div>
+        </div>
       </div>
     </section>
 
@@ -213,6 +232,7 @@
         <li><strong>Setups</strong> combine the signal with the market and the stock's own trend. <span class="setup-tag" data-setup="good">Good buy setup</span> price is within 10% below to 5% above a rising 200 WMA while the market is in a bull phase. <span class="setup-tag" data-setup="selective">Be selective</span> the same zone, but the market is in a bear phase. <span class="setup-tag" data-setup="breakdown">Breakdown risk</span> the stock's 200 WMA is falling, so it's a breakdown in a downtrend, not a pullback. <span class="setup-tag" data-setup="wait">Wait for pullback</span> 5–10% above the WMA: don't chase.</li>
         <li><strong>Enter with discipline:</strong> the entry plan splits a position into thirds at 5% above, at, and 5% below the 200 WMA, with a stop under the last third sized to the stock's typical weekly move. Shares are sized so hitting the stop loses only your chosen risk per trade.</li>
         <li><strong>Patience:</strong> this is a long-term, low-frequency strategy, so expect only a few good setups a year. The 200 WMA is a timing tool, not a substitute for studying the business.</li>
+        <li><strong>RSI &amp; MACD:</strong> each stock shows three main indicators side by side: analyst consensus, RSI (14-day) and MACD (12, 26, 9). RSI favors buying when oversold (under 30) or bullish (50–70) and steady; over 70 means wait. MACD favors buying when it is above its signal line, especially just after a bullish crossover. The more of the three that agree, the stronger the timing, but always pair them with the 200 WMA setup.</li>
         <li><strong>RVOL</strong> (relative volume) is the last completed period's volume divided by its average. A reading of 1.5× or higher alongside a buy signal counts as volume confirmation.</li>
       </ul>
     </section>

@@ -4,6 +4,7 @@
 import { toBars, volumeSummary, wma200, buySignal, wmaTrend, weeklyVolatility, entryPlan } from "../lib/metrics.mjs";
 import { chart, json } from "../lib/yahoo.mjs";
 import { getMarket, isCrypto } from "../lib/market.mjs";
+import { momentum } from "../lib/momentum.mjs";
 
 export default async (req) => {
   const symbol = (new URL(req.url).searchParams.get("symbol") || "").trim().toUpperCase();
@@ -14,14 +15,15 @@ export default async (req) => {
   try {
     const [hourly, daily, weekly, monthly, market] = await Promise.all([
       chart(symbol, "60m", "1mo"),
-      chart(symbol, "1d", "6mo"),
+      chart(symbol, "1d", "1y"),
       chart(symbol, "1wk", "10y"),
       chart(symbol, "1mo", "5y"),
       getMarket(isCrypto(symbol) ? "crypto" : "stocks"),
     ]);
 
     const weeklyBars = toBars(weekly);
-    const dailyVol = volumeSummary(toBars(daily), 30);
+    const dailyBars = toBars(daily);
+    const dailyVol = volumeSummary(dailyBars, 30);
     const wma = wma200(weeklyBars);
     const meta = daily.meta ?? {};
     const price = meta.regularMarketPrice ?? weeklyBars.at(-1)?.close ?? null;
@@ -52,6 +54,7 @@ export default async (req) => {
         signal: buySignal(price, wma.value, dailyVol?.relativeVolume ?? null, { marketBull: market?.bull ?? null, wmaRising: trend.rising }),
         trend,
         market,
+        momentum: momentum(dailyBars),
         plan: entryPlan(wma.value, weeklyVolatility(closes)),
         source: "Yahoo Finance public chart data (may be delayed)",
         fetchedAt: Date.now(),
