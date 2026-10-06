@@ -295,3 +295,8 @@ button.ghost { background: transparent; color: var(--fau-blue-2); border: 1px so
 .partner-list a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 2px; }
 .partner-list a:hover { text-decoration-color: currentColor; }
 .partners p { margin: 6px 0 0; }
+
+/* Total market cap, leading the description */
+.about-cap { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin: 2px 0 8px; font-size: 14px; }
+.about-cap strong { font-size: 20px; font-variant-numeric: tabular-nums; color: var(--fau-blue); }
+@media (prefers-color-scheme: dark) { .about-cap strong { color: #9cc3f0; } }

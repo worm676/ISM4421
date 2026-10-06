@@ -99,6 +99,7 @@ async function loadProfile(symbol) {
   $("about-more").hidden = true;
   $("ratings").hidden = true;
   $("partners").hidden = true;
+  $("about-cap").hidden = true;
   let p = profileCache.get(symbol);
   if (!p) {
     try {
@@ -116,13 +117,18 @@ async function loadProfile(symbol) {
 
 function renderProfile(symbol, p) {
   const pr = p.profile;
+  // Total market cap leads the description: $4.87T, with the full dollar figure beside it.
+  $("about-cap").hidden = !p.marketCap;
+  if (p.marketCap) {
+    $("cap-value").textContent = fmtCap(p.marketCap);
+    $("cap-full").textContent = `($${Math.round(p.marketCap).toLocaleString("en-US")})`;
+  }
   $("about-name").textContent = p.name || state.data?.name || symbol;
   if (!pr) {
-    $("about-facts").textContent = p.marketCap ? `Market cap ${fmtCap(p.marketCap)}` : "";
+    $("about-facts").textContent = "";
     $("about-text").textContent = p.error ? "Company profile is unavailable right now." : "No company description is available for this ticker.";
   } else {
     const facts = [
-      p.marketCap ? `Market cap ${fmtCap(p.marketCap)}` : "",
       [pr.sector, pr.industry].filter(Boolean).join(" · "),
       pr.headquarters,
       pr.employees ? `${pr.employees.toLocaleString()} employees` : "",
