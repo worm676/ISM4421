@@ -13,6 +13,20 @@ Data comes from Yahoo Finance's public chart API (no API key) through a Netlify 
 
 Selecting a stock shows, in the same box as its name, an **About** section (what the company or coin does, its total market cap (shown prominently above the description), sector, industry, headquarters, employees, website, and up to 5 **recent partnerships**: deal headlines from Google News in the last 6 months, de-duplicated, each linking to the article) and **Analyst ratings**: the share of Wall Street analysts rating it Buy, Hold or Sell (out of 100%), the consensus, and the average 12-month price target. Data comes from Yahoo's quoteSummary through `GET /api/profile?symbol=XYZ` (cached 6 hours). That endpoint needs a Yahoo session cookie and crumb, which `netlify/lib/yahoo.mjs` fetches and reuses. Strong Buy counts as Buy and Strong Sell as Sell, and a tie leans to Hold. ETFs have no analyst ratings, so only the description shows.
 
+## Momentum: RSI and MACD
+
+Below the analyst ratings, each stock or coin shows **RSI (14-day)** with a 0–100 gauge and **MACD (12, 26, 9)** with its MACD, signal and histogram values, last crossover and whether momentum is building or fading. Both come from a year of daily closes (`netlify/lib/momentum.mjs`, returned by `/api/market` as `momentum`) and match Robinhood's values to three decimals (see `tests/momentum.test.mjs`).
+
+For buy timing, each indicator is rated:
+
+| Indicator | Favors buying | Neutral | Wait |
+|---|---|---|---|
+| Analyst consensus | Buy | Hold | Sell |
+| RSI | under 30 (oversold) or 50–70 (bullish) | 30–50, or 50–70 but down more than 5 points in 5 days | over 70 (overbought) |
+| MACD | above its signal line | | below its signal line |
+
+A summary then says how many of the 3 indicators favor buying now (2 for coins, which have no analyst ratings).
+
 ## Market context, review and entry plan
 
 Every signal is compared with the overall market:

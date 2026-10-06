@@ -93,6 +93,7 @@ async function load(symbol) {
 // ---------- company profile + analyst consensus ----------
 const profileCache = new Map();
 async function loadProfile(symbol) {
+  state.profile = null;
   $("about-name").textContent = symbol;
   $("about-facts").textContent = "";
   $("about-text").textContent = "Loading company profile…";
@@ -116,6 +117,8 @@ async function loadProfile(symbol) {
 }
 
 function renderProfile(symbol, p) {
+  state.profile = p;
+  renderIndicators();
   const pr = p.profile;
   // Total market cap leads the description: $4.87T, with the full dollar figure beside it.
   $("about-cap").hidden = !p.marketCap;
@@ -167,6 +170,59 @@ function renderPartnerships(p) {
       }).join("")
     : `<li class="muted small">No partnership news in the last 6 months.</li>`;
 }
+// ---------- RSI + MACD, and how the 3 main indicators line up ----------
+const NA = "data unavailable";
+function renderIndicators() {
+  const d = state.data;
+  const m = d?.momentum;
+  $("momo").hidden = !d;
+  if (!d) return;
+  $("m-asof").textContent = m?.asOf ? `Daily close ${new Date(m.asOf).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "";
+
+  const r = m?.rsi;
+  $("rsi-val").textContent = r ? r.value.toFixed(1) : NA;
+  $("rsi-chip").textContent = r ? r.label : "";
+  $("rsi-chip").dataset.stance = r?.stance ?? "";
+  $("rsi-dot").style.left = r ? `${Math.min(100, Math.max(0, r.value))}%` : "0";
+  $("rsi-dot").hidden = !r;
+  $("rsi-detail").textContent = r
+    ? `${r.detail} ${r.direction ? `Over the last 5 days RSI is ${r.direction} (${r.change5d > 0 ? "+" : ""}${r.change5d.toFixed(1)}).` : ""}`
+    : "RSI needs at least 15 days of prices.";
+
+  const c = m?.macd;
+  $("macd-chip").textContent = c ? c.label : "";
+  $("macd-chip").dataset.stance = c?.stance ?? "";
+  const num = (v) => (v == null ? NA : Math.abs(v) < 0.01 && v !== 0 ? v.toExponential(2) : v.toFixed(2));
+  $("macd-vals").innerHTML = c
+    ? `<span>MACD <b>${num(c.macd)}</b></span><span>Signal <b>${num(c.signal)}</b></span><span>Histogram <b>${num(c.histogram)}</b></span>`
+    : `<span>${NA}</span>`;
+  $("macd-detail").textContent = c ? c.detail : "MACD needs at least 35 days of prices.";
+
+  // Three main indicators: analyst consensus, RSI, MACD. Coins have no analyst ratings.
+  const p = state.profile;
+  const rows = [];
+  if (!isCrypto(d.symbol)) {
+    const v = p?.consensus?.verdict;
+    rows.push({ name: "Analyst consensus", value: v ?? (p ? NA : "loading…"), favors: v === "Buy", pending: !p });
+  }
+  rows.push({ name: "RSI", value: r ? `${r.label} (${r.value.toFixed(0)})` : NA, favors: r?.stance === "buy" });
+  rows.push({ name: "MACD", value: c ? c.label : NA, favors: c?.stance === "buy" });
+  const yes = rows.filter((x) => x.favors).length;
+  const n = rows.length;
+  const tone = yes === n ? "strong" : yes > n / 2 ? "lean" : yes === 0 ? "none" : "mixed";
+  const verdict = {
+    strong: "All indicators line up: a favorable time to consider buying. Confirm with the 200 WMA setup above.",
+    lean: "Leaning favorable, but not unanimous. Consider a smaller first entry.",
+    mixed: "Mixed signals. Wait for more confirmation.",
+    none: "No indicator favors buying right now. Be patient.",
+  }[tone];
+  $("ind-summary").dataset.tone = tone;
+  $("ind-summary").innerHTML = `
+    <div class="ind-count"><strong>${yes} of ${n}</strong> indicators favor buying now</div>
+    <ul>${rows.map((x) => `<li><span class="mark ${x.favors ? "yes" : "no"}">${x.favors ? "✓" : x.pending ? "…" : "✗"}</span>${x.name}: <b>${x.value}</b></li>`).join("")}</ul>
+    <p class="small">${verdict}</p>`;
+}
+
 $("about-more").addEventListener("click", () => {
   const clamped = $("about-text").classList.toggle("clamped");
   $("about-more").textContent = clamped ? "Read more" : "Show less";
@@ -202,6 +258,7 @@ function renderHero() {
   }
   renderMarket(d.market);
   renderPlan();
+  renderIndicators();
 }
 
 // ---------- market phase (S&P 500 vs its own 200 WMA) ----------
