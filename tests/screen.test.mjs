@@ -26,7 +26,7 @@ test("screenLists caps at 20 and sorts each list", () => {
   const l = screenLists(rows, 20);
   assert.equal(l.below.length, 20);
   assert.equal(l.extended.length, 20);
-  assert.deepEqual(l.counts, { below: 25, sweetspot: 7, extended: 22, screened: 48 });
+  assert.deepEqual(l.counts, { below: 25, sweetspot: 6, extended: 22, screened: 48 });
   assert.equal(l.below[0].symbol, "B24"); // deepest below first
   assert.equal(l.extended[0].symbol, "E21"); // most extended first
   assert.ok(l.below.every((r) => r.signal.distancePct <= 0));
@@ -71,12 +71,13 @@ test("screenLists builds the sweetspot list: turning up first, then closest to t
     screenRow("B", "b", entry(95)), // ~-4.9%
     screenRow("C", "c", entry(100.9)), // ~+1.0%, at the WMA
     screenRow("D", "d", entry(92)), // ~-7.9%, too far below
-    screenRow("E", "e", entry(102)), // ~+2.1%, too far above
+    screenRow("E", "e", entry(102)), // ~+2.1%
+    screenRow("F", "f", entry(114)), // ~+14%, too far above
   ];
   rows[1].turningUp = true;
   const l = screenLists(rows, 20);
-  assert.deepEqual(l.sweetspot.map((r) => r.symbol), ["B", "A", "C"]);
-  assert.equal(l.counts.sweetspot, 3);
+  assert.deepEqual(l.sweetspot.map((r) => r.symbol), ["B", "A", "C", "E"]);
+  assert.equal(l.counts.sweetspot, 4);
 });
 
 test("screenRow flags turningUp against last week's close, ignoring a repeated current bar", () => {
