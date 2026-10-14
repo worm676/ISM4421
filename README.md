@@ -13,6 +13,16 @@ Data comes from Yahoo Finance's public chart API (no API key) through a Netlify 
 
 Selecting a stock shows, in the same box as its name, an **About** section (what the company or coin does, its total market cap (shown prominently above the description), sector, industry, headquarters, employees, website, and up to 5 **recent partnerships**: deal headlines from Google News in the last 6 months, de-duplicated, each linking to the article) and **Analyst ratings**: the share of Wall Street analysts rating it Buy, Hold or Sell (out of 100%), the consensus, and the average 12-month price target. Data comes from Yahoo's quoteSummary through `GET /api/profile?symbol=XYZ` (cached 6 hours). That endpoint needs a Yahoo session cookie and crumb, which `netlify/lib/yahoo.mjs` fetches and reuses. Strong Buy counts as Buy and Strong Sell as Sell, and a tie leans to Hold. ETFs have no analyst ratings, so only the description shows.
 
+## Futures panel
+
+A **Futures** tab on the right edge of the page opens a side panel with 12 futures (S&P 500, Nasdaq 100, Dow and Russell 2000 E-minis, crude oil, natural gas, gold, silver, copper, 10-year T-note, euro, Bitcoin). Each row shows price, change on the day, a ~6-hour sparkline and a short-term signal from 15-minute bars (`GET /api/futures`, cached 60 s; the panel refreshes every minute while open):
+
+- **MACD (12, 26, 9)** for the trend and **RSI (14)** for the momentum side (above or below 50).
+- **Stochastic (14, 3, 3)** for overbought (80+) and oversold (20 or less).
+- **BUY**: MACD above its signal, RSI 50+ and Stochastic not overbought. **SELL**: MACD below its signal, RSI under 50 and Stochastic not oversold. **NEUTRAL** otherwise, with ↗/↘ showing the lean. **NEW** marks a crossover in the last 45 minutes.
+
+Yahoo's futures prices are delayed about 10 minutes. Clicking a row opens that contract in the main view.
+
 ## Momentum: RSI and MACD
 
 Below the analyst ratings, each stock or coin shows **RSI (14-day)** with a 0–100 gauge and **MACD (12, 26, 9)** with its MACD, signal and histogram values, last crossover and whether momentum is building or fading. Both come from a year of daily closes (`netlify/lib/momentum.mjs`, returned by `/api/market` as `momentum`) and match Robinhood's values to three decimals (see `tests/momentum.test.mjs`).
@@ -55,6 +65,7 @@ netlify/functions/market.mjs   GET /api/market?symbol=XYZ, fetches and summarize
 netlify/functions/top.mjs      GET /api/top, snapshot of the S&P 500 top 20 (cached 5 min)
 netlify/functions/profile.mjs  GET /api/profile?symbol=XYZ, company description + analyst consensus (cached 6 h)
 netlify/functions/crypto.mjs   GET /api/crypto, Crypto Sweetspot over the coins in netlify/lib/crypto.mjs (cached 15 min)
+netlify/functions/futures.mjs  GET /api/futures, 15-minute signals for the contracts in netlify/lib/futures.mjs
 netlify/functions/screen.mjs   GET /api/screen, screens all S&P 500 stocks vs the 200 WMA (cached 15 min)
 netlify/lib/sp500.mjs          full S&P 500 constituent list (refresh when the index changes)
 netlify/lib/top20.mjs          top 20 ticker list (edit when rankings shift)
