@@ -44,7 +44,27 @@ export function macdSeries(closes, fast = 12, slow = 26, signalPeriod = 9) {
   return macd.map((m, i) => ({ macd: m, signal: sig[i], hist: m == null || sig[i] == null ? null : m - sig[i] }));
 }
 
+// Slow Stochastic (14, 3, 3): raw %K = where the close sits in the 14-bar
+// high-low range (0-100), %K = 3-bar average of raw %K, %D = 3-bar average of %K.
+// Over 80 is overbought, under 20 oversold. bars need high, low and close.
+export function stochasticSeries(bars, period = 14, smoothK = 3, smoothD = 3) {
+  const raw = bars.map((b, i) => {
+    if (i < period - 1) return null;
+    const w = bars.slice(i - period + 1, i + 1);
+    const hi = Math.max(...w.map((x) => x.high ?? x.close)), lo = Math.min(...w.map((x) => x.low ?? x.close));
+    return hi === lo ? 50 : ((b.close - lo) / (hi - lo)) * 100;
+  });
+  const sma = (arr, n) => arr.map((_, i) => {
+    const w = arr.slice(Math.max(0, i - n + 1), i + 1);
+    return i < n - 1 || w.some((v) => v == null) ? null : w.reduce((a, v) => a + v, 0) / n;
+  });
+  const k = sma(raw, smoothK), d = sma(k, smoothD);
+  return k.map((v, i) => ({ k: v, d: d[i] }));
+}
+
 const r2 = (n) => (n == null ? null : Math.round(n * 100) / 100);
+// MACD values scale with price, so keep 4 significant digits (0.0003 for the euro, 1.069 for AAPL).
+const sig4 = (n) => (n == null ? null : Number(n.toPrecision(4)));
 
 // bars: [{ t, close, volume }] daily, oldest first.
 export function momentum(bars) {
@@ -101,7 +121,7 @@ export function momentum(bars) {
       ? `MACD is above its signal line${fresh ? `: it crossed up ${cross.barsAgo === 0 ? "today" : `${cross.barsAgo} day${cross.barsAgo === 1 ? "" : "s"} ago`}${cross.aboveZero ? " above the zero line (stronger)" : " below the zero line (early turn)"}` : ""}. Momentum is ${histTrend === "expanding" ? "building" : histTrend === "flipped" ? "just turning" : "fading"}.`
       : `MACD is below its signal line${fresh ? `: it crossed down ${cross.barsAgo === 0 ? "today" : `${cross.barsAgo} day${cross.barsAgo === 1 ? "" : "s"} ago`}` : ""}. Wait for a bullish crossover before buying.`;
     macd = {
-      macd: r2(now.macd), signal: r2(now.signal), histogram: r2(now.hist),
+      macd: sig4(now.macd), signal: sig4(now.signal), histogram: sig4(now.hist),
       histTrend, lastCross: cross, label, stance: bullish ? "buy" : "wait", detail,
     };
   }

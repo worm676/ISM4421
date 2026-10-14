@@ -238,6 +238,22 @@
     </section>
   </main>
 
+  <button type="button" class="fut-tab" id="futTab" aria-expanded="false" aria-controls="futPanel">Futures</button>
+  <aside class="fut-panel" id="futPanel" aria-label="Futures signals" hidden>
+    <div class="fut-head">
+      <div>
+        <h3>Futures</h3>
+        <div class="small muted" id="futMeta">15-minute signals · loading…</div>
+      </div>
+      <button type="button" class="fut-close" id="futClose" aria-label="Close futures">×</button>
+    </div>
+    <ul class="fut-list" id="futList"></ul>
+    <details class="small muted fut-foot">
+      <summary>How these signals work</summary>
+      BUY: MACD above its signal and RSI 50+. SELL: MACD below its signal and RSI under 50. The Stochastic (14, 3, 3) flags overbought (80+) and oversold (20 or less): then the signal is NEUTRAL, since the move is stretched. ↗/↘ shows the lean. <b>NEW</b> = crossover in the last 45 min. Prices from Yahoo, delayed about 10 minutes. Short-term signals carry more risk; not financial advice.
+    </details>
+  </aside>
+
   <dialog id="accountDialog" class="account" aria-labelledby="accountTitle">
     <button type="button" class="close" id="accountClose" aria-label="Close">×</button>
 

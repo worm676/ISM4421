@@ -671,3 +671,53 @@ setInterval(() => {
     load(state.data.symbol);
   }
 }, 5 * 60 * 1000);
+
+// ---------- futures side panel ----------
+let futTimer = null;
+const fmtFut = (n) => (n == null ? "—" : n.toLocaleString("en-US", { minimumFractionDigits: n < 10 ? 4 : 2, maximumFractionDigits: n < 10 ? 4 : 2 }));
+function sparkSvg(values, up) {
+  if (!values?.length) return "";
+  const min = Math.min(...values), max = Math.max(...values), w = 64, h = 22;
+  const pts = values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - ((v - min) / (max - min || 1)) * h).toFixed(1)}`).join(" ");
+  return `<svg class="spark ${up ? "up" : "down"}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+}
+async function loadFutures() {
+  try {
+    const res = await fetch("/api/futures");
+    const d = await res.json();
+    if (!res.ok || d.error) throw new Error(d.error || `HTTP ${res.status}`);
+    const latest = Math.max(...d.futures.filter((f) => f.asOf).map((f) => f.asOf));
+    $("futMeta").textContent = `15-minute signals · as of ${new Date(latest).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    $("futList").innerHTML = d.futures.map((f) => {
+      if (f.error) return `<li class="fut-row"><div class="fut-name"><b>${f.name}</b><span>${f.symbol}</span></div><span class="small muted">data unavailable</span></li>`;
+      const up = (f.changePct ?? 0) >= 0;
+      const arrow = f.signal === "NEUTRAL" && f.lean ? (f.lean === "up" ? " ↗" : " ↘") : "";
+      return `<li><button type="button" class="fut-row" data-s="${f.symbol}" title="${f.reason}">
+        <div class="fut-name"><b>${f.name}</b><span>${f.symbol} · RSI ${f.rsi == null ? "—" : f.rsi.toFixed(0)} · <span class="stoch" data-zone="${f.stochZone ?? ""}">Stoch ${f.stochK == null ? "—" : f.stochK.toFixed(0)}</span></span></div>
+        ${sparkSvg(f.spark, up)}
+        <div class="fut-px"><b>${fmtFut(f.price)}</b><span class="${up ? "up" : "down"}">${fmtPct(f.changePct)}</span></div>
+        <span class="fut-sig" data-sig="${f.signal}">${f.signal}${arrow}${f.fresh ? "<i>NEW</i>" : ""}</span>
+        <span class="fut-why">${f.reason}</span>
+      </button></li>`;
+    }).join("");
+  } catch (err) {
+    $("futMeta").textContent = `Could not load futures: ${err.message}`;
+  }
+}
+function setFutures(open) {
+  $("futPanel").hidden = !open;
+  $("futTab").setAttribute("aria-expanded", open);
+  document.body.classList.toggle("fut-open", open);
+  clearInterval(futTimer);
+  if (open) {
+    loadFutures();
+    futTimer = setInterval(() => { if (!document.hidden) loadFutures(); }, 60 * 1000);
+  }
+}
+$("futTab").addEventListener("click", () => setFutures($("futPanel").hidden));
+$("futClose").addEventListener("click", () => setFutures(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("futPanel").hidden) setFutures(false); });
+$("futList").addEventListener("click", (e) => {
+  const s = e.target.closest("[data-s]")?.dataset.s;
+  if (s) load(s).then(() => $("hero").scrollIntoView({ behavior: "smooth", block: "start" }));
+});
