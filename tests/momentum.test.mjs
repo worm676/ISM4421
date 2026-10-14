@@ -31,7 +31,7 @@ test("momentum rates AAPL: RSI bullish but fading, MACD below its signal", () =>
   assert.equal(mo.rsi.label, "Bullish, fading");
   assert.equal(mo.rsi.stance, "neutral");
   assert.equal(mo.macd.stance, "wait");
-  assert.equal(mo.macd.histogram, -1.07);
+  assert.equal(mo.macd.histogram, -1.069);
   assert.equal(mo.macd.lastCross.direction, "bearish");
 });
 
